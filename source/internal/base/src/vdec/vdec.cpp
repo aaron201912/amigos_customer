@@ -25,6 +25,8 @@ void Vdec::LoadDb()
     stVdecInfo.dpBufMode = GetIniInt(stModDesc.modKeyString,"BUF_MODE");
     stVdecInfo.refFrameNum = GetIniInt(stModDesc.modKeyString,"REF_FRAME");
     stVdecInfo.bitstreamSize = GetIniInt(stModDesc.modKeyString,"BIT_STREAM_BUFFER");
+    stVdecInfo.uintBufWidth = GetIniInt(stModDesc.modKeyString,"BUF_WIDTH");
+    stVdecInfo.uintBufHeight = GetIniInt(stModDesc.modKeyString,"BUF_HEIGHT");
     for (itVdecOut = mapModOutputInfo.begin(); itVdecOut != mapModOutputInfo.end(); itVdecOut++)
     {
         memset(&stDecOutInfo, 0, sizeof(stDecOutInfo_t));
@@ -105,8 +107,8 @@ void Vdec::Init()
     stVdecChnAttr.stVdecVideoAttr.u32RefFrameNum = stVdecInfo.refFrameNum;
     stVdecChnAttr.eVideoMode    = E_MI_VDEC_VIDEO_MODE_FRAME;
     stVdecChnAttr.u32BufSize    = stVdecInfo.bitstreamSize * 1024 * 1024;
-    stVdecChnAttr.u32PicWidth   = 3840;
-    stVdecChnAttr.u32PicHeight  = 2160;
+    stVdecChnAttr.u32PicWidth   = stVdecInfo.uintBufWidth;
+    stVdecChnAttr.u32PicHeight  = stVdecInfo.uintBufHeight;
     stVdecChnAttr.u32Priority   = 0;
     stVdecChnAttr.eCodecType = E_MI_VDEC_CODEC_TYPE_H265;
 #ifndef SSTAR_CHIP_I2

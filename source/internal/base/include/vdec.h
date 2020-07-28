@@ -9,6 +9,8 @@ typedef struct stVdecInfo_s
     int dpBufMode;
     int refFrameNum;
     unsigned int bitstreamSize;
+    unsigned int uintBufWidth;
+    unsigned int uintBufHeight;
 }stVdecInfo_t;
 
 typedef struct stDecOutInfo_s
