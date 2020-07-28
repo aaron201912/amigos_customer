@@ -93,10 +93,6 @@ void Venc::Init()
 {
     MI_VENC_ChnAttr_t stChnAttr;
     std::map<unsigned int, stModInputInfo_t>::iterator itMapIn;
-    MI_SYS_BindType_e eBindType = E_MI_SYS_BIND_TYPE_FRAME_BASE;
-    MI_U32 u32BindParam = 0;
-    MI_VENC_InputSourceConfig_t stVenInSrc;
-    MI_S32 s32Ret = 0;
 
     memset(&stChnAttr, 0, sizeof(MI_VENC_ChnAttr_t));
     switch (stVencInfo.intEncodeType)
@@ -146,9 +142,11 @@ void Venc::Init()
             stChnAttr.stVeAttr.stAttrJpeg.u32MaxPicHeight = (MI_U32)stVencInfo.intHeight;
 
             stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_MJPEGFIXQP;
+#ifndef SSTAR_CHIP_I2
             stChnAttr.stRcAttr.stAttrMjpegCbr.u32BitRate = 30;
             stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
             stChnAttr.stRcAttr.stAttrMjpegCbr.u32SrcFrmRateDen = 1;
+#endif
         }
         break;
         default:
@@ -156,6 +154,12 @@ void Venc::Init()
     }
     Venc_CreateChannel((MI_VENC_CHN)stModDesc.chnId, &stChnAttr);
     MI_VENC_GetChnDevid((MI_VENC_CHN)stModDesc.chnId, &stModDesc.devId);
+#ifndef SSTAR_CHIP_I2
+    MI_VENC_InputSourceConfig_t stVenInSrc;
+    MI_SYS_BindType_e eBindType = E_MI_SYS_BIND_TYPE_FRAME_BASE;
+    MI_U32 u32BindParam = 0;
+    MI_S32 s32Ret = 0;
+
     memset(&stVenInSrc, 0, sizeof(MI_VENC_InputSourceConfig_t));
     for (itMapIn = mapModInputInfo.begin(); itMapIn != mapModInputInfo.end(); ++itMapIn)
     {
@@ -183,6 +187,7 @@ void Venc::Init()
             printf("Set frame mode! ret %d\n", s32Ret);
         }
     }
+#endif
     Venc_StartChannel((MI_VENC_CHN)stModDesc.chnId);
 }
 

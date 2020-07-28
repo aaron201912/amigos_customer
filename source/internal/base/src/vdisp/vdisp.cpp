@@ -11,13 +11,14 @@
  Information is unlawful and strictly prohibited. Sigmastar hereby reserves the
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
+
+#include <stdio.h>
 #include <mi_sys_datatype.h>
 #include <mi_sys.h>
 #include <mi_vdisp_datatype.h>
 #include <mi_vdisp.h>
-
 #include "vdisp.h"
-#include <stdio.h>
+
 
 Vdisp::Vdisp()
 {
@@ -60,7 +61,11 @@ void Vdisp::LoadDb()
 }
 void Vdisp::Init()
 {
+#ifdef SSTAR_CHIP_I2
+    MI_VDISP_InputPortAttr_t stInputPortAttr;
+#else
     MI_VDISP_InputChnAttr_t stInputChnAttr;
+#endif
     MI_VDISP_OutputPortAttr_t stOutputPortAttr;
     std::vector<stVdispInputInfo_t>::iterator itVdispIn;
     std::vector<stVdispOutputInfo_t>::iterator itVdispOut;
@@ -71,6 +76,24 @@ void Vdisp::Init()
     //set input port attr
     for (itVdispIn = vVdispInputInfo.begin(); itVdispIn != vVdispInputInfo.end(); itVdispIn++)
     {
+#ifdef SSTAR_CHIP_I2
+        if(itVdispIn->intFreeRun == 1)
+        {
+            stInputPortAttr.s32IsFreeRun = TRUE;
+        }
+        else
+        {
+            stInputPortAttr.s32IsFreeRun = FALSE;
+        }
+
+        stInputPortAttr.u32OutX = ALIGN16_DOWN(itVdispIn->intVdispInX);
+        stInputPortAttr.u32OutY = itVdispIn->intVdispInY;
+
+        stInputPortAttr.u32OutWidth = itVdispIn->intVdispInWidth;
+        stInputPortAttr.u32OutHeight = itVdispIn->intVdispInHeight;
+        MI_VDISP_SetInputPortAttr(stModDesc.devId, (MI_VDISP_PORT)itVdispIn->intPortId, &stInputPortAttr);
+        MI_VDISP_EnableInputPort(stModDesc.devId, (MI_VDISP_PORT)itVdispIn->intPortId);
+#else
         if(itVdispIn->intFreeRun == 1)
         {
             stInputChnAttr.s32IsFreeRun = TRUE;
@@ -85,9 +108,9 @@ void Vdisp::Init()
 
         stInputChnAttr.u32OutWidth = itVdispIn->intVdispInWidth;
         stInputChnAttr.u32OutHeight = itVdispIn->intVdispInHeight;
-
-        MI_VDISP_SetInputChannelAttr(stModDesc.devId, itVdispIn->intChnId, &stInputChnAttr);
-        MI_VDISP_EnableInputChannel(stModDesc.devId, itVdispIn->intChnId);
+        MI_VDISP_SetInputChannelAttr(stModDesc.devId, (MI_VDISP_CHN)itVdispIn->intChnId, &stInputChnAttr);
+        MI_VDISP_EnableInputChannel(stModDesc.devId, (MI_VDISP_CHN)itVdispIn->intChnId);
+#endif
     }
 
     for (itVdispOut = vVdispOutputInfo.begin(); itVdispOut != vVdispOutputInfo.end(); itVdispOut++)
@@ -130,7 +153,11 @@ void Vdisp::Deinit()
     std::vector<stVdispInputInfo_t>::iterator itVdispIn;
     for(itVdispIn = vVdispInputInfo.begin(); itVdispIn != vVdispInputInfo.end(); itVdispIn++)
     {
+#ifdef SSTAR_CHIP_I2
+        MI_VDISP_DisableInputPort(stModDesc.devId, (MI_VDISP_PORT)(itVdispIn->intPortId));
+#else
         MI_VDISP_DisableInputChannel(stModDesc.devId, (MI_VDISP_CHN)(itVdispIn->intChnId));
+#endif
     }
     MI_VDISP_StopDev(stModDesc.devId);
     MI_VDISP_CloseDevice(stModDesc.devId);

@@ -12,10 +12,10 @@
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
 
+#include <stdio.h>
 #include "mi_sys.h"
 #include "mi_ai.h"
 #include "ai.h"
-#include <stdio.h>
 
 Ai::Ai()
 {

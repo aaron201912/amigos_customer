@@ -65,13 +65,20 @@ endif
 
 ifneq ($(interface_ao), disable)
 LIBS += -lmi_ao
+ifeq ($(CHIP), i2)
+LIBS += -lg711 -lg726 -lSRC_LINUX -lAEC_LINUX -lAPC_LINUX
+endif
 endif
 
 ifneq ($(interface_hdmi), disable)
 LIBS += -lmi_hdmi
 endif
 
-LIBS += -lmi_sys -lcam_fs_wrapper -lcam_os_wrapper
+ifneq ($(CHIP), i2)
+LIBS += -lcam_fs_wrapper -lcam_os_wrapper
+endif
+
+LIBS += -lmi_sys
 
 
 

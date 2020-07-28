@@ -22,8 +22,10 @@ typedef struct stSys_BindInfo_s
     MI_SYS_ChnPort_t stDstChnPort;
     MI_U32 u32SrcFrmrate;
     MI_U32 u32DstFrmrate;
+#ifndef SSTAR_CHIP_I2
     MI_SYS_BindType_e eBindType;
     MI_U32 u32BindParam;
+#endif
 } stSys_BindInfo_T;
 
 Slot::Slot()
@@ -52,8 +54,10 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
     if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
     {
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
         stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
         stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+#endif
         stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
         stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
         stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
@@ -65,6 +69,7 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
         stBindInfo.stDstChnPort.u32PortId = mapSlotInputInfo[stIn.curPortId].uintDstBindPort;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
+#ifndef SSTAR_CHIP_I2
         if(stPreDesc.modId == E_SYS_MOD_VDEC || stPreDesc.modId == E_SYS_MOD_VDISP)
         {
             if(stModDesc.modId == E_SYS_MOD_VDISP)
@@ -77,6 +82,9 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
         {
             MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
         }
+#else
+        MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+#endif
     }
     else
     {

@@ -26,6 +26,10 @@
 #include "st_rgn.h"
 #include "gb2312_code.h"
 
+#ifndef UNUSED
+#define UNUSED(var) (void)((var) = (var))
+#endif
+
 #define MAX_RGN_NUM     1024
 #define MI_PI		    3.14159265358979323846
 

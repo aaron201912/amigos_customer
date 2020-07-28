@@ -22,8 +22,12 @@
 #include "mi_venc.h"
 #include "mi_common.h"
 
+#ifdef INTERFACE_AI
 #include "ai.h"
+#endif
+#ifdef INTERFACE_VENC
 #include "venc.h"
+#endif
 #include "file.h"
 #include "rtsp.h"
 
@@ -915,6 +919,7 @@ MI_S32 Rtsp::FlushBufPool(unsigned int inPort, stRtspRefInfo_t *pRef)
 MI_S32 Rtsp::GetDataDirect(int chnId, void *pData, MI_U32 u32Maxlen)
 {
     MI_U32 u32Size = 0;
+#ifdef INTERFACR_VENC
     MI_VENC_Stream_t stStream;
     MI_VENC_Pack_t stPack[16];
     MI_VENC_ChnStat_t stStat;
@@ -980,6 +985,7 @@ MI_S32 Rtsp::GetDataDirect(int chnId, void *pData, MI_U32 u32Maxlen)
     }
  RET:
     MI_VENC_CloseFd(s32Fd);
+#endif
 
     return u32Size;
 }
@@ -1014,6 +1020,7 @@ void Rtsp::LoadDb()
         {
             case E_SYS_MOD_AI:
             {
+#ifdef INTERFACE_AI
                 Ai *pAiObj = dynamic_cast<Ai *>(pObj);
                 stAiInfo_t stAiInfo;
                 ASSERT(pAiObj);
@@ -1026,10 +1033,12 @@ void Rtsp::LoadDb()
                 stRtspInputInfo.uintAudioBitWidth = stAiInfo.uintBitWidth;
                 stRtspInputInfo.uintAudioStreamRefCnt = 0;
                 mRtspInputInfo[strName] = stRtspInputInfo;
+#endif
             }
             break;
             case E_SYS_MOD_VENC:
             {
+#ifdef INTERFACE_VENC
                 Venc *pVencObj = dynamic_cast<Venc *>(pObj);
                 stVencInfo_t stVencInfo;
                 ASSERT(pVencObj);
@@ -1039,6 +1048,7 @@ void Rtsp::LoadDb()
                 stRtspInputInfo.uintFrameRate = itMapRtspIn->second.curFrmRate;
                 stRtspInputInfo.uintVideoStreamRefCnt = 0;
                 mRtspInputInfo[strName] = stRtspInputInfo;
+#endif
             }
             break;
             case E_SYS_MOD_FILE:
@@ -1220,7 +1230,9 @@ void* Rtsp::OpenStream(char const * szStreamName, void * arg)
         if (stPrevModDesc.modId == E_SYS_MOD_VENC &&
             (pInfo->intEncodeType == E_MI_VENC_MODTYPE_H265E || pInfo->intEncodeType == E_MI_VENC_MODTYPE_H264E))
         {
+#ifdef INTERFACE_VENC
             MI_VENC_RequestIdr((MI_VENC_CHN)stPrevModDesc.chnId, FALSE);
+#endif
         }
     }
     printf("open stream \"%s\" success, in port:%d refcnt %d dequeue cnt %d addr %p\n", szStreamName, pInfo->uintVideoInPortId, stRefInfo.refId, stRefInfo.uintDequeueCnt, &mapVideoStreamRefInfo[stRefInfo.refId]);

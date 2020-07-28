@@ -4,3 +4,4 @@ INTERFACE_ENABLED:=$(patsubst %_enable_,%,$(patsubst %__,%,$(filter-out %_disabl
 INTERFACE_DISABLED:=$(filter-out $(INTERFACE_ENABLED),$(INTERFACE_MODULES))
 
 CODEDEFINE += $(foreach n,$(INTERFACE_ENABLED),-DINTERFACE_$(shell tr 'a-z' 'A-Z' <<< $(n)))
+CODEDEFINE += -DSSTAR_CHIP_$(shell tr 'a-z' 'A-Z' <<< $(CHIP))

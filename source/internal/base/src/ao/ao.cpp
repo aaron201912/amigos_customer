@@ -11,10 +11,9 @@
  Information is unlawful and strictly prohibited. Sigmastar hereby reserves the
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
-
+#include <stdio.h>
 #include "mi_ao.h"
 #include "ao.h"
-#include <stdio.h>
 
 Ao::Ao()
 {

@@ -21,6 +21,25 @@
 
 #include <stdio.h>
 
+#ifdef SSTAR_CHIP_I2
+#define SWITCH_MI_MOD_TO_RGN(mi, rgn) do{  \
+    switch (mi) \
+    {   \
+        case E_MI_MODULE_ID_VPE:    \
+        {   \
+            rgn = E_MI_RGN_MODID_VPE;   \
+        }   \
+        break;  \
+        case E_MI_MODULE_ID_DIVP:   \
+        {   \
+            rgn = E_MI_RGN_MODID_DIVP;  \
+        }   \
+        break;  \
+        default:    \
+            assert(0);  \
+    }   \
+}while(0)
+#else
 #define SWITCH_MI_MOD_TO_RGN(mi, rgn) do{  \
     switch (mi) \
     {   \
@@ -43,6 +62,7 @@
             assert(0);  \
     }   \
 }while(0)
+#endif
 #define I4_RED      (1)
 #define I4_GREEN    (2)
 #define I4_BLUE     (3)
@@ -134,10 +154,12 @@ void Ui::Start()
             stChnAttr.bShow = TRUE;
             stChnAttr.stPoint.u32X = stUiOsdPath.uintPosX;
             stChnAttr.stPoint.u32Y = stUiOsdPath.uintPosY;
+#ifndef SSTAR_CHIP_I2
             stChnAttr.unPara.stOsdChnPort.u32Layer = stUiOsdPath.uintLayer;
             stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.eAlphaMode = E_MI_RGN_PIXEL_ALPHA;
             stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.stAlphaPara.stArgb1555Alpha.u8BgAlpha = 0;
             stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.stAlphaPara.stArgb1555Alpha.u8FgAlpha = 0xFF;
+#endif
             MI_RGN_AttachToChn((MI_RGN_HANDLE)stUiOsdInfo.uintHandle, &stChnPort, &stChnAttr);
         }
         mapUiInfo[(EN_UI_FUNCTION)uintUiFunction].push_back(stUiOsdInfo);
@@ -194,10 +216,12 @@ void Ui::Start()
             stChnAttr.bShow = TRUE;
             stChnAttr.stPoint.u32X = (MI_U32)stCoverOsdPath.uintPosX;
             stChnAttr.stPoint.u32Y = (MI_U32)stCoverOsdPath.uintPosY;
+#ifndef SSTAR_CHIP_I2
             stChnAttr.unPara.stCoverChnPort.u32Layer = (MI_U32)stCoverOsdPath.uintLayer;
             stChnAttr.unPara.stCoverChnPort.stSize.u32Width = (MI_U32)stCoverOsdPath.uintWid;
             stChnAttr.unPara.stCoverChnPort.stSize.u32Height = (MI_U32)stCoverOsdPath.uintHei;
             stChnAttr.unPara.stCoverChnPort.u32Color = (MI_U32)stCoverOsdPath.uintColor;
+#endif
             MI_RGN_AttachToChn((MI_RGN_HANDLE)stUiCoverInfo.uintHandle, &stChnPort, &stChnAttr);
         }
         vectCoverInfo.push_back(stUiCoverInfo);

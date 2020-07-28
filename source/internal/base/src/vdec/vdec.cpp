@@ -58,7 +58,9 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
     }
     if (eCodecType != stVdecChnAttr.eCodecType)
     {
+#ifndef SSTAR_CHIP_I2
         MI_VDEC_OutputPortAttr_t stOutputPortAttr;
+#endif
         std::vector<stDecOutInfo_t>::iterator itVdecOut;
 
         printf("Codec type is different need reset to %d\n", eCodecType);
@@ -69,6 +71,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
         MI_VDEC_StartChn(stModDesc.chnId);
         for (itVdecOut = vDecOutInfo.begin(); itVdecOut != vDecOutInfo.end(); itVdecOut++)
         {
+#ifndef SSTAR_CHIP_I2
             memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
             if (itVdecOut->uintDecOutWidth > pInfo->stCodecInfo.streamWidth)
             {
@@ -80,8 +83,8 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
             }
             stOutputPortAttr.u16Width = itVdecOut->uintDecOutWidth;
             stOutputPortAttr.u16Height = itVdecOut->uintDecOutHeight;
-        
             MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
+#endif
         }
     }
 }
@@ -93,7 +96,9 @@ void Vdec::Outcoming()
 void Vdec::Init()
 {
     MI_VDEC_ChnAttr_t stVdecChnAttr;
+#ifndef SSTAR_CHIP_I2
     MI_VDEC_OutputPortAttr_t stOutputPortAttr;
+#endif
     std::vector<stDecOutInfo_t>::iterator itVdecOut;
 
     memset(&stVdecChnAttr, 0, sizeof(MI_VDEC_ChnAttr_t));
@@ -104,15 +109,19 @@ void Vdec::Init()
     stVdecChnAttr.u32PicHeight  = 2160;
     stVdecChnAttr.u32Priority   = 0;
     stVdecChnAttr.eCodecType = E_MI_VDEC_CODEC_TYPE_H265;
+#ifndef SSTAR_CHIP_I2
     stVdecChnAttr.eDpbBufMode = (MI_VDEC_DPB_BufMode_e)stVdecInfo.dpBufMode;
+#endif
     MI_VDEC_CreateChn(stModDesc.chnId, &stVdecChnAttr);
     MI_VDEC_StartChn(stModDesc.chnId);
     for (itVdecOut = vDecOutInfo.begin(); itVdecOut != vDecOutInfo.end(); itVdecOut++)
     {
+#ifndef SSTAR_CHIP_I2
         memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
         stOutputPortAttr.u16Width = itVdecOut->uintDecOutWidth;
         stOutputPortAttr.u16Height = itVdecOut->uintDecOutHeight;
         MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
+#endif
     }
 
 }

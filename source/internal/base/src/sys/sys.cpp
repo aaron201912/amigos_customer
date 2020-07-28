@@ -17,16 +17,16 @@
 
 #include "mi_common.h"
 #include "mi_sys.h"
-#if INTERFACE_VENC
+#ifdef INTERFACE_VENC
 #include "mi_venc.h"
 #endif
-#if INTERFACE_VDEC
+#ifdef INTERFACE_VDEC
 #include "mi_vdec.h"
 #endif
-#if INTERFACE_AI
+#ifdef INTERFACE_AI
 #include "mi_ai.h"
 #endif
-#if INTERFACE_AO
+#ifdef INTERFACE_AO
 #include "mi_ao.h"
 #endif
 
@@ -46,8 +46,10 @@ typedef struct stSys_BindInfo_s
     MI_SYS_ChnPort_t stDstChnPort;
     MI_U32 u32SrcFrmrate;
     MI_U32 u32DstFrmrate;
+#ifndef SSTAR_CHIP_I2
     MI_SYS_BindType_e eBindType;
     MI_U32 u32BindParam;
+#endif
 } stSys_BindInfo_T;
 static MI_S32 Sys_Init(void)
 {
@@ -594,8 +596,10 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
         //printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
         //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
         stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
         stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+#endif
         stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
         stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
         stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
@@ -607,6 +611,7 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
         stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
+#ifndef SSTAR_CHIP_I2
         if(stPreDesc.modId == E_SYS_MOD_VDEC || stPreDesc.modId == E_SYS_MOD_VDISP)
         {
             if(stModDesc.modId == E_SYS_MOD_VDISP)
@@ -619,6 +624,9 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
         {
             MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
         }
+#else
+        MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+#endif
     }
 }
 void Sys::UnBindBlock(stModInputInfo_t &stIn)
@@ -977,7 +985,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
     MI_S32 s32Ret;
     fd_set read_fds;
     struct timeval tv;
-#if INTERFACE_VENC
+#ifdef INTERFACE_VENC
     MI_VENC_Stream_t stStream;
     MI_VENC_Pack_t stPack[16];
     MI_VENC_ChnStat_t stStat;
@@ -1041,7 +1049,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             MI_SYS_CloseFd(s32Fd);
         }
         break;
-#if INTERFACE_AI
+#ifdef INTERFACE_AI
         case E_SYS_MOD_AI:
         {
             MI_AUDIO_Frame_t stFrm;
@@ -1054,8 +1062,13 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             {
                 stStreamInfo.eStreamType = E_STREAM_PCM;
                 stStreamInfo.stCodecInfo.uintPackCnt = 1;
+#ifndef SSTAR_CHIP_I2
                 stEsPacket.pData = (char *)stFrm.apSrcPcmVirAddr[0];
                 stEsPacket.uintDataSize = stFrm.u32SrcPcmLen;
+#else
+                stEsPacket.pData = (char *)stFrm.apVirAddr[0];
+                stEsPacket.uintDataSize = stFrm.u32Len;
+#endif
                 stStreamInfo.stCodecInfo.pDataAddr = &stEsPacket;
                 stStreamInfo.stCodecInfo.uintPackCnt = 1;
                 pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
@@ -1064,7 +1077,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
         }
         break;
 #endif
-#if INTERFACE_VENC
+#ifdef INTERFACE_VENC
         case E_SYS_MOD_VENC:
         {
             s32Fd = MI_VENC_GetFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
@@ -1246,7 +1259,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
             case E_STREAM_H264:
             case E_STREAM_H265:
             {
-#if INTERFACE_VDEC
+#ifdef INTERFACE_VDEC
                 unsigned int modId = pInstance->stModDesc.modId;
 
                 if(modId == E_SYS_MOD_VDEC)
@@ -1275,7 +1288,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
             break;
             case E_STREAM_PCM:
             {
-#if INTERFACE_AO
+#ifdef INTERFACE_AO
                 unsigned int modId = pInstance->stModDesc.modId;
                 if(modId == E_SYS_MOD_AO)
                 {
@@ -1294,7 +1307,11 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                             ASSERT(0);
                     }
                     stAoFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_STEREO;
+#ifndef SSTAR_CHIP_I2
                     stAoFrame.u32Len = stAoFrame.u32SrcPcmLen = pStreamInfo->stPcmInfo.uintDataSize;
+#else
+                    stAoFrame.u32Len = pStreamInfo->stPcmInfo.uintDataSize;
+#endif
                     stAoFrame.u64TimeStamp = pStreamInfo->stPcmInfo.ullTimeStampUs;
                     stAoFrame.apVirAddr[0] = pStreamInfo->stPcmInfo.pData;
                     //printf("Send ao p %p size %d\n", pStreamInfo->stPcmInfo.pData, stAoFrame.u32SrcPcmLen);

@@ -19,15 +19,15 @@
 #include <string>
 
 #include "mi_sys.h"
-#if INTERFACE_PANEL
+#ifdef INTERFACE_PANEL
 #include "mi_panel.h"
 #endif
-#if INTERFACE_HDMI
+#ifdef INTERFACE_HDMI
 #include "mi_hdmi.h"
 #endif
 #include "mi_disp.h"
 
-#if INTERFACE_PANEL
+#ifdef INTERFACE_PANEL
 #include "SAT070CP50_1024x600.h"
 #endif
 
@@ -134,7 +134,9 @@ void Disp::Init()
     MI_DISP_PubAttr_t stPubAttr;
     MI_DISP_VideoLayerAttr_t stLayerAttr;
     MI_DISP_InputPortAttr_t stInputPortAttr;
+#ifndef SSTAR_CHIP_I2
     MI_DISP_RotateConfig_t stRotateConfig;
+#endif
     std::map<unsigned int, stDispLayerInfo_t>::iterator itMapLayerInfo;
     std::map<unsigned int, stDispLayerInputPortInfo_t>::iterator itMapLayerInportInfo;
     //pub attr
@@ -165,7 +167,7 @@ void Disp::Init()
 
     if (stDispInfo.intDeviceType == 0)
     {
-#if INTERFACE_PANEL
+#ifdef INTERFACE_PANEL
         MI_PANEL_Init(stPanelParam.eLinkType);
         MI_PANEL_SetPanelParam(&stPanelParam);
         if(stPanelParam.eLinkType == E_MI_PNL_LINK_MIPI_DSI)
@@ -190,7 +192,7 @@ void Disp::Init()
     }
     else if (stDispInfo.intDeviceType == 1)
     {
-#if INTERFACE_HDMI
+#ifdef INTERFACE_HDMI
         MI_HDMI_InitParam_t stInitParam;
         MI_HDMI_Attr_t stAttr;
 
@@ -248,15 +250,19 @@ void Disp::Init()
         stLayerAttr.stVidLayerDispWin.u16X = itMapLayerInfo->second.uintDispXpos;
         stLayerAttr.stVidLayerDispWin.u16Y = itMapLayerInfo->second.uintDispYpos;
         MI_DISP_SetVideoLayerAttr((MI_DISP_LAYER)u8LayerId, &stLayerAttr);
+#ifndef SSTAR_CHIP_I2
         //rotate
         stRotateConfig.eRotateMode = (MI_DISP_RotateMode_e)itMapLayerInfo->second.uintRot;
         MI_DISP_SetVideoLayerRotateMode((MI_DISP_LAYER)u8LayerId, &stRotateConfig);
+#endif
         MI_DISP_EnableVideoLayer((MI_DISP_LAYER)u8LayerId);
         for (itMapLayerInportInfo = itMapLayerInfo->second.mapLayerInputPortInfo.begin(); itMapLayerInportInfo != itMapLayerInfo->second.mapLayerInputPortInfo.end(); ++itMapLayerInportInfo)
         {
             memset(&stInputPortAttr, 0, sizeof(MI_DISP_InputPortAttr_t));
+#ifndef SSTAR_CHIP_I2
             stInputPortAttr.u16SrcWidth = itMapLayerInportInfo->second.uintSrcWidth;
             stInputPortAttr.u16SrcHeight = itMapLayerInportInfo->second.uintSrcHeight;
+#endif
             stInputPortAttr.stDispWin.u16X = itMapLayerInportInfo->second.uintDstXpos;
             stInputPortAttr.stDispWin.u16Y = itMapLayerInportInfo->second.uintDstYpos;
             stInputPortAttr.stDispWin.u16Width = itMapLayerInportInfo->second.uintDstWidth;
@@ -288,14 +294,14 @@ void Disp::Deinit()
     MI_DISP_Disable((MI_DISP_DEV)stModDesc.devId);
     if (stDispInfo.intDeviceType == 0)
     {
-#if INTERFACE_PANEL
+#ifdef INTERFACE_PANEL
 
        MI_PANEL_DeInit();
 #endif
     }
     else if (stDispInfo.intDeviceType == 0)
     {
-#if INTERFACE_HDMI
+#ifdef INTERFACE_HDMI
         MI_HDMI_Stop(E_MI_HDMI_ID_0);
         MI_HDMI_Close(E_MI_HDMI_ID_0);
         MI_HDMI_DeInit();

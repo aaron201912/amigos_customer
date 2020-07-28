@@ -18,7 +18,9 @@
 #include <vector>
 #include <string>
 #include "mi_sys.h"
+#ifdef INTERFACE_SENSOR
 #include "mi_sensor.h"
+#endif
 #include "mi_vpe.h"
 #include "vpe.h"
 
@@ -38,11 +40,13 @@ typedef struct VPE_ChannelInfo_s
     MI_S32 u32Y;
     MI_SYS_PixelFormat_e eFormat;
     MI_VPE_RunningMode_e eRunningMode;
+#ifndef SSTAR_CHIP_I2
     MI_VPE_HDRType_e eHDRtype;
     MI_VPE_3DNR_Level_e e3DNRLevel;
     MI_BOOL bRotation;
     MI_VPE_SensorChannel_e eBindSensorId;
     MI_U32   u32ChnPortMode;
+#endif
 } VPE_ChannelInfo_t;
 
 typedef struct VPE_PortInfo_s
@@ -72,13 +76,17 @@ static MI_S32 Vpe_CreateChannel(MI_VPE_CHANNEL VpeChannel, VPE_ChannelInfo_t *ps
     stChannelVpeAttr.bUvInvert= FALSE;
     stChannelVpeAttr.ePixFmt = pstChannelInfo->eFormat;
     stChannelVpeAttr.eRunningMode = pstChannelInfo->eRunningMode;
-    stChannelVpeAttr.bRotation = pstChannelInfo->bRotation;
+#ifndef SSTAR_CHIP_I2
     stChannelVpeAttr.eHDRType  = pstChannelInfo->eHDRtype;
     stChannelVpeAttr.eSensorBindId = pstChannelInfo->eBindSensorId;
+    stChannelVpeAttr.bRotation = pstChannelInfo->bRotation;
     stChannelVpeAttr.u32ChnPortMode = pstChannelInfo->u32ChnPortMode;
+#endif
     MI_VPE_CreateChannel(VpeChannel, &stChannelVpeAttr);
+#ifndef SSTAR_CHIP_I2
     stChannelVpeParam.eHDRType = pstChannelInfo->eHDRtype;
     stChannelVpeParam.e3DNRLevel = pstChannelInfo->e3DNRLevel;
+#endif
     MI_VPE_SetChannelParam(VpeChannel, &stChannelVpeParam);
 
     return MI_SUCCESS;
@@ -99,7 +107,9 @@ static MI_S32 Vpe_StartPort(MI_VPE_PORT VpePort, VPE_PortInfo_t *pstPortInfo)
 
     memset(&stVpeMode, 0, sizeof(stVpeMode));
     memset(&stCrop, 0, sizeof(MI_SYS_WindowRect_t));
+#ifndef SSTAR_CHIP_I2
     MI_VPE_SetPortCrop(pstPortInfo->DepVpeChannel, VpePort, &stCrop);
+#endif
     MI_VPE_GetPortMode(pstPortInfo->DepVpeChannel, VpePort, &stVpeMode);
     stVpeMode.eCompressMode = E_MI_SYS_COMPRESS_MODE_NONE;
     stVpeMode.ePixelFormat = pstPortInfo->ePixelFormat;
@@ -157,20 +167,25 @@ void Vpe::LoadDb()
 void Vpe::Init()
 {
     VPE_ChannelInfo_t stVpeChannelInfo;
+#ifdef INTERFACE_SENSOR
     MI_SNR_PlaneInfo_t stSnrPlane0Info;
     MI_SNR_PADInfo_t  stPad0Info;
     MI_BOOL bMirror = FALSE, bFlip = FALSE;
+#endif
     std::vector<stVpeOutInfo_t>::iterator itVpeOut;
     VPE_PortInfo_t stVpePortInfo;
     MI_U16 u16Width;
     MI_U16 u16Height;
     MI_SYS_WindowRect_t stCrop;
 
+#ifdef INTERFACE_SENSOR
     memset(&stSnrPlane0Info, 0x0, sizeof(MI_SNR_PlaneInfo_t));
     memset(&stPad0Info, 0x0, sizeof(MI_SNR_PADInfo_t));
+#endif
 
     if (stVpeInfo.intbUseSnrFmt)
     {
+#ifdef INTERFACE_SENSOR
         MI_SNR_GetPadInfo((MI_SNR_PAD_ID_e)stVpeInfo.intSensorId, &stPad0Info);
         MI_SNR_GetPlaneInfo((MI_SNR_PAD_ID_e)stVpeInfo.intSensorId, 0, &stSnrPlane0Info);
         switch (stPad0Info.eIntfMode)
@@ -192,13 +207,14 @@ void Vpe::Init()
         printf("w  %d\n", u16Width);
         printf("w  %d\n", u16Height);
         printf("fmt  %d\n", stVpeInfo.intInputFmt);
-
+#endif
     }
     else
     {
         u16Width = stVpeInfo.intVidWidth;
         u16Height = stVpeInfo.intVidHeight;
     }
+#ifdef INTERFACE_SENSOR
     switch((MI_SYS_Rotate_e)stVpeInfo.intRotation)
     {
         case E_MI_SYS_ROTATE_NONE:
@@ -223,6 +239,7 @@ void Vpe::Init()
             break;
     }
     MI_SNR_SetOrien((MI_SNR_PAD_ID_e)stVpeInfo.intSensorId, bMirror, bFlip);
+#endif
     memset(&stVpeChannelInfo, 0, sizeof(VPE_ChannelInfo_t));
     stVpeChannelInfo.u16VpeMaxW = u16Width;
     stVpeChannelInfo.u16VpeMaxH = u16Height;
@@ -231,6 +248,9 @@ void Vpe::Init()
     stVpeChannelInfo.u16VpeCropW = 0;
     stVpeChannelInfo.u16VpeCropH = 0;
     stVpeChannelInfo.eRunningMode = (MI_VPE_RunningMode_e)stVpeInfo.intRunningMode;
+    stVpeChannelInfo.eFormat = (MI_SYS_PixelFormat_e)stVpeInfo.intInputFmt;
+#ifndef SSTAR_CHIP_I2
+    stVpeChannelInfo.e3DNRLevel = (MI_VPE_3DNR_Level_e)stVpeInfo.int3dNrLevel;
     if(stVpeChannelInfo.eRunningMode == E_MI_VPE_RUN_DVR_MODE)
     {
         stVpeChannelInfo.eBindSensorId = E_MI_VPE_SENSOR_INVALID;
@@ -239,11 +259,10 @@ void Vpe::Init()
     {
         stVpeChannelInfo.eBindSensorId = (MI_VPE_SensorChannel_e)(stVpeInfo.intSensorId + 1);
     }
-    stVpeChannelInfo.eFormat = (MI_SYS_PixelFormat_e)stVpeInfo.intInputFmt;
-    stVpeChannelInfo.e3DNRLevel = (MI_VPE_3DNR_Level_e)stVpeInfo.int3dNrLevel;
     stVpeChannelInfo.eHDRtype = (MI_VPE_HDRType_e)stVpeInfo.intHdrType;
     stVpeChannelInfo.bRotation = FALSE;
     stVpeChannelInfo.u32ChnPortMode = stVpeInfo.intChnPortMode;
+#endif
     Vpe_CreateChannel((MI_VPE_CHANNEL)stModDesc.chnId, &stVpeChannelInfo);
     MI_VPE_SetChannelRotation((MI_VPE_CHANNEL)stModDesc.chnId, (MI_SYS_Rotate_e)stVpeInfo.intRotation);
     memset(&stCrop, 0, sizeof(MI_SYS_WindowRect_t));
