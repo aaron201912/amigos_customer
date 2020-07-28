@@ -28,6 +28,9 @@
 #if INTERFACE_AO
 #include "disp.h"
 #endif
+#ifdef INTERFACE_VDISP
+#include "vdisp.h"
+#endif
 #include "ssclient.h"
 
 void Sys::Implement(std::string &strKey)
@@ -45,7 +48,7 @@ void Sys::Implement(std::string &strKey)
     {
         switch (intId)
         {
-#if INTERFACE_VDEC
+#ifdef INTERFACE_VDEC
             case E_SYS_MOD_VDEC:
             {
                 SysChild<Vdec> Vdec(strKey);
@@ -57,10 +60,17 @@ void Sys::Implement(std::string &strKey)
                 SysChild<Rtsp> Rtsp(strKey);
             }
             break;
-#if INTERFACE_DIVP
+#ifdef INTERFACE_DIVP
             case E_SYS_MOD_DIVP:
             {
                 SysChild<Divp> Divp(strKey);
+            }
+            break;
+#endif
+#ifdef INTERFACE_VDISP
+            case E_SYS_MOD_VDISP:
+            {
+                SysChild<Vdisp> Vdisp(strKey);
             }
             break;
 #endif
@@ -74,14 +84,14 @@ void Sys::Implement(std::string &strKey)
                 SysChild<Slot> Slot(strKey);
             }
             break;
-#if INTERFACE_DISP
+#ifdef INTERFACE_DISP
             case E_SYS_MOD_DISP:
             {
                 SysChild<Disp> Disp(strKey);
             }
             break;
 #endif
-#if INTERFACE_AO
+#ifdef INTERFACE_AO
             case E_SYS_MOD_AO:
             {
                 SysChild<Ao> Ao(strKey);
@@ -111,11 +121,22 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
     std::vector<stDecOutInfo_t> vectVdecOut;
     std::vector<stDecOutInfo_t>::iterator itVdecOut;
 
-    mapModId["RTSP"] = E_SYS_MOD_RTSP;
+#ifdef INTERFACE_VDEC
     mapModId["VDEC"] = E_SYS_MOD_VDEC;
+#endif
+#ifdef INTERFACE_DIVP
     mapModId["DIVP"] = E_SYS_MOD_DIVP;
+#endif
+#ifdef INTERFACE_AO
     mapModId["AO"] = E_SYS_MOD_AO;
+#endif
+#ifdef INTERFACE_DISP
     mapModId["DISP"] = E_SYS_MOD_DISP;
+#endif
+#ifdef INTERFACE_VDISP
+    mapModId["VDISP"] = E_SYS_MOD_VDISP;
+#endif
+    mapModId["RTSP"] = E_SYS_MOD_RTSP;
     mapModId["FILE"] = E_SYS_MOD_FILE;
     mapModId["SLOT"] = E_SYS_MOD_SLOT;
 
@@ -129,6 +150,13 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
         Sys::DestroyObj();
         return;
     }
+    RtspObj->GetInfo(info, isOpenOnvif, outCfg);
+    for (itOutCfg = outCfg.begin(); itOutCfg != outCfg.end(); ++itOutCfg)
+    {
+        itOutCfg->second.url = liv555Url;
+    }
+    RtspObj->UpdateInfo(info, isOpenOnvif, outCfg);
+#ifdef INTERFACE_VDEC
     objName = "VDEC_CH0_DEV0";
     VdecObj = dynamic_cast<Vdec *>(Sys::GetInstance(objName));
     if (!VdecObj)
@@ -137,12 +165,6 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
         Sys::DestroyObj();
         return;
     }
-    RtspObj->GetInfo(info, isOpenOnvif, outCfg);
-    for (itOutCfg = outCfg.begin(); itOutCfg != outCfg.end(); ++itOutCfg)
-    {
-        itOutCfg->second.url = liv555Url;
-    }
-    RtspObj->UpdateInfo(info, isOpenOnvif, outCfg);
     VdecObj->GetInfo(VdecInfo, vectVdecOut);
     for (itVdecOut = vectVdecOut.begin(); itVdecOut != vectVdecOut.end(); ++itVdecOut)
     {
@@ -150,7 +172,7 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
         itVdecOut->uintDecOutHeight = height;
     }
     VdecObj->UpdateInfo(VdecInfo, vectVdecOut);
-
+#endif
 }
 SsClient::~SsClient()
 {

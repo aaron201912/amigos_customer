@@ -70,6 +70,9 @@ void Divp::Init()
     stDivpChnAttr.stCropRect.u16Height  = (MI_U16)stDivpInfo.intCropHeight;
     stDivpChnAttr.u32MaxWidth           = (MI_U16)stDivpInfo.intCropWidth;
     stDivpChnAttr.u32MaxHeight          = (MI_U16)stDivpInfo.intCropHeight;
+#ifdef SSTAR_CHIP_I2
+    stDivpChnAttr.u32FrameRate = 60;
+#endif
     MI_DIVP_CreateChn((MI_DIVP_CHN)stModDesc.chnId, &stDivpChnAttr);
 
     for (itDivpOut = vDivpOutInfo.begin(); itDivpOut != vDivpOutInfo.end(); itDivpOut++)

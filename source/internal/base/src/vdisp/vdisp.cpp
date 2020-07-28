@@ -151,6 +151,8 @@ void Vdisp::Init()
 void Vdisp::Deinit()
 {
     std::vector<stVdispInputInfo_t>::iterator itVdispIn;
+
+    MI_VDISP_StopDev(stModDesc.devId);
     for(itVdispIn = vVdispInputInfo.begin(); itVdispIn != vVdispInputInfo.end(); itVdispIn++)
     {
 #ifdef SSTAR_CHIP_I2
@@ -159,7 +161,6 @@ void Vdisp::Deinit()
         MI_VDISP_DisableInputChannel(stModDesc.devId, (MI_VDISP_CHN)(itVdispIn->intChnId));
 #endif
     }
-    MI_VDISP_StopDev(stModDesc.devId);
     MI_VDISP_CloseDevice(stModDesc.devId);
     MI_VDISP_Exit();
 }

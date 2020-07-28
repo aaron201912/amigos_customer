@@ -299,7 +299,7 @@ void Disp::Deinit()
        MI_PANEL_DeInit();
 #endif
     }
-    else if (stDispInfo.intDeviceType == 0)
+    else if (stDispInfo.intDeviceType == 1)
     {
 #ifdef INTERFACE_HDMI
         MI_HDMI_Stop(E_MI_HDMI_ID_0);

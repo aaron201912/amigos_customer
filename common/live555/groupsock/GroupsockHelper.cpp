@@ -99,7 +99,8 @@ static int createSocket(int type) {
 
   sock = socket(AF_INET, type, 0);
 #ifdef FD_CLOEXEC
-  if (sock != -1) fcntl(sock, F_SETFD, FD_CLOEXEC);
+  if (sock != -1) 
+  	fcntl(sock, F_SETFD, FD_CLOEXEC);
 #endif
   return sock;
 }

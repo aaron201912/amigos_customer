@@ -843,15 +843,15 @@ int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, Delivery
         return -1;
     }
     intPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
+    stReceiverPortDesc.bStart = FALSE;
+    stReceiverPortDesc.fpRec = funcRecFp;
+    stReceiverPortDesc.fpStateStart = funcStart;
+    stReceiverPortDesc.fpStateStop = funcStop;
+    stReceiverPortDesc.pUsrData = pUsrData;
+    stReceiverPortDesc.portId = inPortId;
+    stReceiverPortDesc.pSysClass = this;
     if (pPrevClass->mapRecevier.find(intPrevOutPort) == pPrevClass->mapRecevier.end())
     {
-        stReceiverPortDesc.bStart = FALSE;
-        stReceiverPortDesc.fpRec = funcRecFp;
-        stReceiverPortDesc.fpStateStart = funcStart;
-        stReceiverPortDesc.fpStateStop = funcStop;
-        stReceiverPortDesc.pUsrData = pUsrData;
-        stReceiverPortDesc.portId = inPortId;
-        stReceiverPortDesc.pSysClass = this;
         stReceiverDesc.mapPortDesc[mapModInputInfo[inPortId].curIoKeyString] = stReceiverPortDesc;
         stReceiverDesc.pSysClass = pPrevClass;
         stReceiverDesc.uintPort = intPrevOutPort;

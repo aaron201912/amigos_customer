@@ -338,7 +338,9 @@ void MatroskaFile::getH265ConfigData(MatroskaTrack const* track,
     // Extract, from "VPS_SPS_PPSBytes", one VPS NAL unit, one SPS NAL unit, and one PPS NAL unit.
     // (I hope one is all we need of each.)
     u_int8_t* ptr = VPS_SPS_PPSBytes;
-    u_int8_t* limit = &VPS_SPS_PPSBytes[numVPS_SPS_PPSBytes];
+    u_int8_t* limit = NULL;//&VPS_SPS_PPSBytes[numVPS_SPS_PPSBytes];
+	if(NULL != VPS_SPS_PPSBytes)
+	  limit = &VPS_SPS_PPSBytes[numVPS_SPS_PPSBytes];
 	
     if (track->codecPrivateUsesH264FormatForH265) {
       // The data uses the H.264-style format (but including VPS NAL unit(s)).
@@ -429,7 +431,7 @@ void MatroskaFile
     
     u_int8_t numHeaders;
     getPrivByte(numHeaders);
-    unsigned headerSize[3]; // we don't handle any more than 2+1 headers
+    unsigned headerSize[3] = { 0 }; // we don't handle any more than 2+1 headers
     
     // Extract the sizes of each of these headers:
     unsigned sizesSum = 0;
@@ -686,8 +688,8 @@ FileSink* MatroskaFile::createFileSinkForTrackNumber(unsigned trackNumber, char 
 
       char* sPropParameterSetsStr
 	= new char[sps_base64 == NULL ? 0 : strlen(sps_base64) +
-		   pps_base64 == NULL ? 0 : strlen(pps_base64) +
-		   10 /*more than enough space*/];
+		   (pps_base64 == NULL ? 0 : strlen(pps_base64) +
+		   10) /*more than enough space*/];
       sprintf(sPropParameterSetsStr, "%s,%s", sps_base64, pps_base64);
       delete[] sps_base64; delete[] pps_base64;
 

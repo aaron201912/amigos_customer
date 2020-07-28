@@ -394,7 +394,14 @@ MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
     /*End*/
 
     /*Event choice*/
-    pTemp->maxEventCout = stAttr.maxEventCout;
+    if (!stAttr.maxEventCout)
+    {
+        pTemp->maxEventCout = 30; //default is 30 if user not set.
+    }
+    else
+    {
+        pTemp->maxEventCout = stAttr.maxEventCout;
+    }
     pTemp->bDropEvent = stAttr.bDropEvent;
     /*End*/
 

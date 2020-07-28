@@ -45,6 +45,10 @@ ifneq ($(interface_disp), disable)
 LIBS += -lmi_disp
 endif
 
+ifneq ($(interface_vdisp), disable)
+LIBS += -lmi_vdisp
+endif
+
 ifneq ($(CHIP), i2)
 LIBS += -lcam_fs_wrapper -lcam_os_wrapper
 endif

@@ -501,7 +501,7 @@ void RTCPInstance
 			int tcpSocketNum, unsigned char tcpStreamChannelId) {
   do {
     Boolean callByeHandler = False;
-    char* reason = NULL; // by default, unless/until a BYE packet with a 'reason' arrives
+	char* reason = NULL; // by default, unless/until a BYE packet with a 'reason' arrives
     unsigned char* pkt = fInBuf;
 
 #ifdef DEBUG
@@ -548,7 +548,8 @@ void RTCPInstance
       if (length > packetSize) break;
 
       // Assume that each RTCP subpacket begins with a 4-byte SSRC:
-      if (length < 4) break; length -= 4;
+      if (length < 4) break; 
+	  length -= 4;
       reportSenderSSRC = ntohl(*(u_int32_t*)pkt); ADVANCE(4);
 #ifdef HACK_FOR_CHROME_WEBRTC_BUG
       if (reportSenderSSRC == 0x00000001 && pt == RTCP_PT_RR) {
@@ -566,7 +567,8 @@ void RTCPInstance
 #ifdef DEBUG
 	  fprintf(stderr, "SR\n");
 #endif
-	  if (length < 20) break; length -= 20;
+	  if (length < 20) break; 
+	  length -= 20;
 
 	  // Extract the NTP timestamp, and note this:
 	  unsigned NTPmsw = ntohl(*(u_int32_t*)pkt); ADVANCE(4);
@@ -640,6 +642,11 @@ void RTCPInstance
 #endif
 	      reasonLength = length-1;
 	    }
+		if(NULL != reason) 
+	   {
+	   		delete[] reason;
+			reason = NULL;
+	   }
 	    reason = new char[reasonLength + 1];
 	    for (unsigned i = 0; i < reasonLength; ++i) {
 	      reason[i] = pkt[1+i];
@@ -853,6 +860,11 @@ void RTCPInstance
 #ifdef DEBUG
       fprintf(stderr, "rejected bad RTCP subpacket: header 0x%08x\n", rtcpHdr);
 #endif
+       if(NULL != reason) 
+	   {
+	   		delete[] reason;
+			reason = NULL;
+	   }
       break;
     } else {
 #ifdef DEBUG
@@ -875,6 +887,11 @@ void RTCPInstance
 	    // Note that the handler function is responsible for delete[]ing "reason"
       }
     }
+	if(NULL != reason) 
+   {
+   		delete[] reason;
+		reason = NULL;
+   }
   } while (0);
 }
 
