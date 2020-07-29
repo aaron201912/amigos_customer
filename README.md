@@ -4,21 +4,45 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 
 编译方法:
 
-	1. 先编译ALKAID然后再build amigos_customer代码，修改amigos_customer/source/Makefile中DB_ALKAID_PROJ指定ALKAID project 对应current.configs的位置
-	2. 如果ALIAID的project是337de的，则编译的amigos是source端的，如果ALIAID的project是202/203的，则编译出来的amigos是Sink端的。
-	3. 执行：
-	Source端：
-		bin: amigos_customer/source/out/app/hdmi_convertor
-		config: amigos_customer/source/hdmi_convertor/config/2M_AUDIO.ini
-		在板子上执行： ./hdmi_convertor ./2M_AUDIO.ini
-
-	Sink端：
-		bin: amigos_customer/source/out/app/rtspclient
-		config: 
-			--->202使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_DISP.ini
-			--->203使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_HDMI.ini
-		在板子上执行:
-			--->202使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx/main_stream RTSP_CLIENT_DISP.ini 1024 600 
-				--->注：1024 600是屏的宽高，根据具体情况去配置
-			--->203使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx/main_stream RTSP_CLIENT_HDMI.ini 1920 1080 
-				--->注：hdmi默认输出1080p60
+	编译方法：
+		1.先编译ALKAID，修改amigos/source/Makefile中DB_ALKAID_PROJ指定ALKAID project对应current.configs的位置
+		2.进入到amigos/source/
+		3.make clean&make 
+		4. 如果ALIAID的project是337de的，则编译的amigos是source端的，如果ALIAID的project是202/203/msr650的，则编译出来的amigos是Sink端的。
+	执行：
+		Source端：
+			bin: amigos_customer/source/out/app/hdmi_convertor
+			config: amigos_customer/source/hdmi_convertor/config/2M_AUDIO.ini
+			在板子上执行： ./hdmi_convertor ./2M_AUDIO.ini
+				2M_AUDIO.ini所在位置：
+					339G使用source/hdmi_convertor/config/alderaan/2M_AUDIO.ini
+					337DE使用source/hdmi_convertor/config/jedi/2M_AUDIO.ini
+					请注意：
+						文件source/hdmi_convertor/config/nosignal.h264或者source/hdmi_convertor/config/nosignal.h265需要存放到2M_AUDIO.ini所指定的板子的路径下：
+							FILE_READ_PATH=/customer/nosignal.h265
+						若没有此路径，请改ini配置对应的路径
+		Sink端：
+			bin: amigos_customer/source/out/app/rtspclient
+			功能: 播放一路码流
+			config: 
+				--->202使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_DISP.ini
+				--->203使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_HDMI.ini
+				--->msr650以hdmitx输出video使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_DIVP_HDMI.ini
+			在板子上执行:
+				--->202使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx RTSP_CLIENT_DISP.ini 1024 600 
+					--->注：1024 600是屏的宽高，根据具体情况去配置
+				--->203使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx RTSP_CLIENT_HDMI.ini 1920 1080 
+					--->注：hdmi默认输出1080p60
+				--->msr650使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx RTSP_CLIENT_DIVP_HDMI.ini 1920 1080 
+					--->注：hdmi默认输出1080p60
+					
+			bin: amigos_customer/source/out/app/preview
+			功能: 根据不同的ini配置可播放一路或多路码流，次应用相当于一个全功能版本，可以任意配置ini达到串流的目的，202、203也可使用此应用，但是目前使用rtspclient已经满足需求。
+			config:
+				--->msr650以hdmitx输出一路video amigos_customer/source/preview/config/naboo/RTSP_CLIENT_DIVP_HDMI.ini
+				--->msr650以hdmitx输出四路video(默认一路rtsp接收，并发4路video显示，可配置4路rtsp接收并发4路video显示) amigos_customer/source/preview/config/naboo/RTSP_CLIENT_DIVP_DISP_HDMI_4WIN.ini
+			在板子上执行：
+				--->msr650使用 
+					./preview RTSP_CLIENT_DIVP_HDMI.ini
+					./preview RTSP_CLIENT_DIVP_DISP_HDMI_4WIN.ini
+				
