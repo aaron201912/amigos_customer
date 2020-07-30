@@ -180,6 +180,8 @@ class Rtsp: public Sys
         static std::map<unsigned int, stRtspRefInfo_t> mapVideoStreamRefInfo;
         static std::map<unsigned int, stRtspRefInfo_t> mapAudioStreamRefInfo;
         static stRtspDataMutexCond_t stDataMuxCond;
+        static char eventLoopWatchVariable;
+        static unsigned rtspClientCount; // Counts how many streams (i.e., "RTSPClient"s) are currently in use.
         std::map<unsigned int, std::string> mapInportToStream;
         std::map<unsigned int, stRtspOutConfig_t> mapPortToCfg;
         std::map<std::string, stRtspOutInfo_t> mapUrlToOutInfo;

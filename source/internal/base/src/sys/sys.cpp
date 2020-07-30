@@ -169,6 +169,7 @@ void Sys::DestroyObj()
     if (m_pstDict)
     {
         iniparser_freedict(m_pstDict);
+        m_pstDict = NULL;
     }
 }
 void Sys::Begin(std::map<std::string, Sys *> &maskMap)

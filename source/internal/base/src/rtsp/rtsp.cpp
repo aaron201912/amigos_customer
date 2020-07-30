@@ -45,6 +45,9 @@ std::map<MI_U32, stRtspDataPackageHead_t> Rtsp::mapRtspDataPackage;
 std::map<unsigned int, stRtspRefInfo_t> Rtsp::mapVideoStreamRefInfo;
 std::map<unsigned int, stRtspRefInfo_t> Rtsp::mapAudioStreamRefInfo;
 stRtspDataMutexCond_t Rtsp::stDataMuxCond;
+char Rtsp::eventLoopWatchVariable = 0;
+unsigned Rtsp::rtspClientCount = 0;
+
 
 // A function that outputs a string that identifies each stream (for debugging output).  Modify this if you wish:
 UsageEnvironment& operator<<(UsageEnvironment& env, const RTSPClient& rtspClient) {
@@ -56,14 +59,10 @@ UsageEnvironment& operator<<(UsageEnvironment& env, const MediaSubsession& subse
   return env << subsession.mediumName() << "/" << subsession.codecName();
 }
 
-static char eventLoopWatchVariable = 0;
-
 // Define a class to hold per-stream state that we maintain throughout each stream's lifetime:
 
 
 #define RTSP_CLIENT_VERBOSITY_LEVEL 1 // by default, print verbose output from each "RTSPClient"
-
-static unsigned rtspClientCount = 0; // Counts how many streams (i.e., "RTSPClient"s) are currently in use.
 
 TopUsageEnvironment* TopUsageEnvironment::createNew(Rtsp &rtspRef, stRtspOutInfo_t &outInfo, TaskScheduler& taskScheduler) {
     return new TopUsageEnvironment(rtspRef, outInfo, taskScheduler);
@@ -1099,6 +1098,8 @@ Rtsp::Rtsp()
 {
     pRTSPServer = NULL;
     bOpenOnvif = FALSE;
+    eventLoopWatchVariable = 0;
+    rtspClientCount = 0;
 }
 Rtsp::~Rtsp()
 {
