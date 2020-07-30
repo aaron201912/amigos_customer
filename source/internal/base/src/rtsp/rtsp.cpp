@@ -824,8 +824,10 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
     if(iter != mapRtspDataPackage.end())
     {
         pCharAddr = (char *)pData;
-        stRtspDataPackage_t *pos, *posN;
-        list_for_each_entry_safe(pos, posN, &iter->second.stDataList, stDataList)
+        stRtspDataPackage_t *pos;
+        
+        pos = list_first_entry(&iter->second.stDataList, stRtspDataPackage_t, stDataList);
+        if (!list_empty(&pos->stDataList))
         {
             if (!pos->bExit)
             {
@@ -846,7 +848,7 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
                     else
                     {
                         printf("Data max! ref %d size %d total count %d total ref %d frm ref %d\n", pRef->refId, sizeRet, iter->second.totalCount, iter->second.uintRefCnt, pos->u32FrmRef);
-                        break;
+                        goto EXIT;
                     }
                     //printf("size %d data_length %d Addr %p total %d ref %d, frm cnt %d refId %d\n", sizeRet, pos->u32DataLen, pos->pDataAddr, iter->second.totalCount, pos->u32FrmRef, pos->u32FrmCnt, pRef->refId);
                     ASSERT(pos->u32FrmRef);
@@ -863,10 +865,11 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
             }
             else
             {
-                break;
+                goto EXIT;
             }
         }        
     }
+EXIT:
     pthread_mutex_unlock(&stDataMuxCond.mutex);
 
     return sizeRet;
