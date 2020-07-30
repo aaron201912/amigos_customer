@@ -657,11 +657,12 @@ void Sys::UnBindBlock(stModInputInfo_t &stIn)
         stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
+#ifndef SSTAR_CHIP_I2
          if(stModDesc.modId == E_SYS_MOD_VDISP)
          {
             stBindInfo.stDstChnPort.u32ChnId = GetIniInt(stIn.curIoKeyString, "CHN");
          }
-
+#endif
         MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
     }
 }
