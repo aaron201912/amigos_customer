@@ -39,6 +39,8 @@
 
 #define RTSP_LISTEN_PORT        554
 #define BUF_POOL_MAX 120
+#define BUF_AUDIO_POOL_MAX 2
+
 
 std::map<std::string, stRtspInputInfo_t> Rtsp::mRtspInputInfo;
 std::map<MI_U32, stRtspDataPackageHead_t> Rtsp::mapRtspDataPackage;
@@ -484,7 +486,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
                 stTemAttr.bSignalResetTimer = 0;
                 stTemAttr.stTemBuf.pTemBuffer = (void *)this;
                 stTemAttr.stTemBuf.u32TemBufferSize = 0;
-                stTemAttr.maxEventCout = 60;
+                stTemAttr.maxEventCout = 30;
                 stTemAttr.bDropEvent = TRUE;
                 snprintf(audioSenderName, 40, "rtsp_audio_sender_%d", pstClientOutInfo->uintAudioOutPort);
                 TemOpen(audioSenderName, stTemAttr);
@@ -673,7 +675,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
 
         return;
     }
-    if (iter->second.totalCount > BUF_POOL_MAX)
+    if (iter->second.totalCount > iter->second.maxCount)
     {
         stRtspDataPackage_t *pstFirstPackage = NULL;
 
@@ -770,10 +772,11 @@ void Rtsp::BufPoolEmptyAndWait(void)
 
     return;
 }
-MI_S32 Rtsp::OpenBufPool(unsigned int inPort)
+MI_S32 Rtsp::OpenBufPool(unsigned int inPort, unsigned int maxCnt)
 {
     pthread_mutex_lock(&stDataMuxCond.mutex);
     INIT_LIST_HEAD(&mapRtspDataPackage[inPort].stDataList);
+    mapRtspDataPackage[inPort].maxCount = maxCnt;
     mapRtspDataPackage[inPort].totalCount = 0;
     mapRtspDataPackage[inPort].uintCurFrmCnt = 0;
     mapRtspDataPackage[inPort].uintRefCnt = 0;
@@ -1120,11 +1123,11 @@ void Rtsp::Init()
 
         for (itMapRtspInfo = mRtspInputInfo.begin(); itMapRtspInfo != mRtspInputInfo.end(); ++itMapRtspInfo)
         {
-            OpenBufPool(itMapRtspInfo->second.uintVideoInPortId);
+            OpenBufPool(itMapRtspInfo->second.uintVideoInPortId, BUF_POOL_MAX);
             CreateReceiver(itMapRtspInfo->second.uintVideoInPortId, DataReceiver, NULL, NULL, NULL);
             if (itMapRtspInfo->second.intHasPcmData)
             {
-                OpenBufPool(itMapRtspInfo->second.uintAuidioInPortId);
+                OpenBufPool(itMapRtspInfo->second.uintAuidioInPortId, BUF_AUDIO_POOL_MAX);
                 CreateReceiver(itMapRtspInfo->second.uintAuidioInPortId, DataReceiver, NULL, NULL, NULL);
             }
         }

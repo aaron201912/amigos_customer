@@ -135,7 +135,7 @@ void WW_WAVAudioFileSource::doReadFromFile()
 	} else if (iFrameSize == 0) {
 		//nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
 		//		(TaskFunc*)FramedSource::afterGetting, this);
-		nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
+		nextTask() = envir().taskScheduler().scheduleDelayedTask(1,
 				(TaskFunc*)WW_WAVAudioFileSource::doGetNextFrameStatic, this);
 		return ;
 	}
@@ -158,8 +158,8 @@ void WW_WAVAudioFileSource::doReadFromFile()
 		gettimeofday(&fPresentationTime, NULL);
 	}
 #endif
-	fLastPlayTime = (unsigned)((fPlayTimePerSample*fFrameSize)/bytesPerSample * 0.9);
-	fDurationInMicroseconds = fLastPlayTime;
+	//fLastPlayTime = (unsigned)((fPlayTimePerSample*fFrameSize)/bytesPerSample);
+	//fDurationInMicroseconds = fLastPlayTime;
 	FramedSource::afterGetting(this);
 }
 

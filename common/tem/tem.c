@@ -77,11 +77,14 @@ typedef struct ST_TEM_NODE_s{
     char *pThreadName;     // Tem thread name.
     ST_TEM_ATTR *pTemAttr; // User setting.
     ST_TEM_INFO *pTemInfo; // Info of thread.
+    unsigned int intTotalDataCnt; // List total data count.
     unsigned int intTotalListCnt; // List total count.
     struct list_head stDataListHead; // Tem data event list head of ST_TEM_DATA_NODE.
     struct list_head stTemNodeList; // Tem node.
     unsigned int maxEventCout; //Event max 
-    unsigned char bDropEvent;  //b Drop
+    unsigned int maxDataCnt; //data max 
+    unsigned char bDropEvent;  //b Drop event
+    unsigned char bDropData;  //b Drop data
 }ST_TEM_NODE;
 
 static pthread_mutex_t m_MutexTem = PTHREAD_MUTEX_INITIALIZER;
@@ -131,17 +134,29 @@ static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_T
     pNode = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
     ASSERT(pNode);
     //printf("Malloc %lu\n", (unsigned long)pNode);
+    pNode->stUserData.u32UserDataSize = 0;
     if (pstData != NULL)
     {
         memcpy(&pNode->stUserData, pstData, sizeof(ST_TEM_USER_DATA));
     }
     pNode->enTemThrSt = enStatus;
     pthread_mutex_lock(pdata_mutex);
-    if (pTemNode->intTotalListCnt >= pTemNode->maxEventCout)
+    if (enStatus == E_TEM_DO_USER_DATA)
     {
-        ERROR("Event list is over range %d!\n", pTemNode->intTotalListCnt);
-        if (pTemNode->bDropEvent)
+        //printf("total %d max %d total list %d max %d\n", pTemNode->intTotalDataCnt, pTemNode->maxDataCnt, pTemNode->intTotalListCnt, pTemNode->maxEventCout);
+        if (pTemNode->intTotalDataCnt > pTemNode->maxDataCnt
+            && pTemNode->bDropData)
         {
+            ERROR("Event data is over range %d!\n", pTemNode->intTotalDataCnt);
+            pthread_mutex_unlock(pdata_mutex);
+            _TemFlushEvent(pTemNode, pdata_mutex);
+            ERROR("Drop data event!\n");
+            return FALSE;
+        }
+        if (pTemNode->intTotalListCnt > pTemNode->maxEventCout
+            && pTemNode->bDropEvent)
+        {
+            ERROR("Event list is over range %d!\n", pTemNode->intTotalListCnt);
             pthread_mutex_unlock(pdata_mutex);
             _TemFlushEvent(pTemNode, pdata_mutex);
             ERROR("Drop event!\n");
@@ -150,6 +165,7 @@ static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_T
     }
     list_add_tail(&pNode->stDataList, &pTemNode->stDataListHead);
     pTemNode->intTotalListCnt++;
+    pTemNode->intTotalDataCnt += pNode->stUserData.u32UserDataSize;
     pthread_mutex_unlock(pdata_mutex);
     return TRUE;
 }
@@ -184,6 +200,7 @@ static EN_TEM_STATUS _TemPopEvent(ST_TEM_NODE *pTemNode, ST_TEM_USER_DATA *pstDa
     memcpy(pstData, &pNode->stUserData, sizeof(ST_TEM_USER_DATA));
     list_del(&pNode->stDataList);
     pTemNode->intTotalListCnt--;
+    pTemNode->intTotalDataCnt -= pNode->stUserData.u32UserDataSize;
     pthread_mutex_unlock(pdata_mutex);
     //printf("Free %lu\n", (unsigned long)pNode);
     free(pNode);
@@ -394,15 +411,16 @@ MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
     /*End*/
 
     /*Event choice*/
-    if (!stAttr.maxEventCout)
+    pTemp->bDropEvent = stAttr.bDropEvent;
+    pTemp->bDropData = stAttr.bDropData;
+    if (stAttr.bDropData)
     {
-        pTemp->maxEventCout = 30; //default is 30 if user not set.
+        pTemp->maxDataCnt = stAttr.maxDataCout;
     }
-    else
+    if (stAttr.bDropEvent)
     {
         pTemp->maxEventCout = stAttr.maxEventCout;
     }
-    pTemp->bDropEvent = stAttr.bDropEvent;
     /*End*/
 
     /*Malloc Tem info*/

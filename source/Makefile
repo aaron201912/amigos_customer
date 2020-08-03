@@ -1,6 +1,6 @@
 DB_BUILD_TOP:=$(shell pwd)
 DB_OUT_PATH:=$(DB_BUILD_TOP)/out
-DB_ALKAID_PROJ:=~/i2_nvr/project/configs/current.configs
+DB_ALKAID_PROJ:=~/203_sdk/project/configs/current.configs
 DB_3PARTY_PATH:=$(DB_BUILD_TOP)/../3rdparty
 include $(DB_ALKAID_PROJ)
 -include $(MODULE)/$(MODULE).mk

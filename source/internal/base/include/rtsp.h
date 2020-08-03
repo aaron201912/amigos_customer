@@ -53,6 +53,7 @@ typedef struct
 }stRtspDataMutexCond_t;
 typedef struct
 {
+    unsigned int maxCount;
     unsigned int totalCount;
     unsigned int uintCurFrmCnt;
     unsigned int uintRefCnt;
@@ -168,7 +169,7 @@ class Rtsp: public Sys
         static int ReadAudioStream(void *handle, unsigned char *ucpBuf, int BufLen, struct timeval *p_Timestamp, void *arg);
         static MI_S32 TermBufPool(void);
         static void BufPoolEmptyAndWait(void);
-        static MI_S32 OpenBufPool(unsigned int inPort);
+        static MI_S32 OpenBufPool(unsigned int inPort, unsigned int maxCnt);
         static MI_S32 CloseBufPool(unsigned int inPort);
         static MI_S32 DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, stRtspRefInfo_t *pRef);
         static MI_S32 FlushBufPool(unsigned int inPort, stRtspRefInfo_t *pRef);

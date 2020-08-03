@@ -76,6 +76,8 @@ typedef struct{
     FP_TEM_DOSIGNAL fpThreadDoSignal;
     ST_TEM_BUFFER stTemBuf;
     unsigned int maxEventCout;
+    unsigned int maxDataCout;
+    unsigned char bDropData;
     unsigned char bDropEvent;
     MI_BOOL bSignalResetTimer; // Reset timer after get signal.
 }ST_TEM_ATTR;
