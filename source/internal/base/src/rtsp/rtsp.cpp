@@ -1546,6 +1546,9 @@ void Rtsp::Stop()
         {
             printf("first %s stop url client %p\n", itMapRtspOut->first.c_str(), itMapRtspOut->second.pRtspClient);
             itMapRtspOut->second.env->taskScheduler().scheduleDelayedTask(1, (TaskFunc*)streamByeBye, itMapRtspOut->second.pRtspClient);
+        }
+        for (itMapRtspOut = mapUrlToOutInfo.begin(); itMapRtspOut != mapUrlToOutInfo.end(); itMapRtspOut++)
+        {
             TemClose(itMapRtspOut->first.c_str());
             itMapRtspOut->second.env->reclaim();
             delete itMapRtspOut->second.scheduler;
