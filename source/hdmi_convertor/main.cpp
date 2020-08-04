@@ -511,6 +511,9 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
         pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
         printf("Switch source done !\n");
         Sys::Insert(*pstPackage->pVectVideoPipeLine);
         printf("Insert video done !\n");
@@ -526,6 +529,9 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         pSrcOb = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
         pSrcObNew = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
+        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
         printf("Switch source done !\n");
         Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
         printf("Insert source ok !\n");
