@@ -353,9 +353,13 @@ static void *_TemThreadMain(void * pArg)
             case 0xFFFFFFFF:
                 intCondWaitRev = pthread_cond_wait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex);
                 break;
+            case 0:
+                intCondWaitRev = ETIMEDOUT;
+                break;
             default:
             {
                 struct timespec stCurTime;
+                MI_BOOL bWait = FALSE;
                 clock_gettime(CLOCK_MONOTONIC, &stCurTime);
                 if ((stCurTime.tv_sec > stOuttime.tv_sec) \
                         ||((stCurTime.tv_sec == stOuttime.tv_sec)?(stCurTime.tv_nsec >= stOuttime.tv_nsec):FALSE) \
@@ -374,14 +378,17 @@ static void *_TemThreadMain(void * pArg)
                     if (u32FuncRunTime < u32TimeOut)
                     {
                         AddTime(stOuttime, u32TimeOut-u32FuncRunTime);
+                        bWait = TRUE;
                     }
                     else if (u32TimeOut != 0)
                     {
-                        AddTime(stOuttime, u32TimeOut);
                         WARN("Func run time is too much, and it's larger than monitor wait time!!\n ");
                     }
                 }
-                intCondWaitRev = pthread_cond_timedwait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex, &stOuttime);
+                if (bWait)
+                    intCondWaitRev = pthread_cond_timedwait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex, &stOuttime);
+                else
+                    intCondWaitRev = ETIMEDOUT;
             }
             break;
         }
