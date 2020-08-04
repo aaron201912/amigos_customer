@@ -51,6 +51,8 @@
 typedef enum{
     E_TEM_IDLE,
     E_TEM_DO_USER_DATA,
+    E_TEM_DROP_USER_DATA,
+    E_TEM_DROP_USER_DATA_END,
     E_TEM_EXIT,
     E_TEM_START_MONITOR,
     E_TEM_START_ONESHOT,
@@ -102,25 +104,6 @@ MI_U32 Mif_Syscfg_GetTime0()
 }
 LIST_HEAD(stTemNodeHead); // Tem node, head of ST_TEM_NODE.
 
-static void _TemFlushEvent(ST_TEM_NODE *pTemNode, pthread_mutex_t *pdata_mutex)
-{
-    ST_TEM_DATA_NODE *pNode = NULL, *pNodeN = NULL;
-
-    if (pTemNode == NULL)
-    {
-        ERROR("pTemNode  is NULL!!\n");
-        return;
-    }
-    pthread_mutex_lock(pdata_mutex);
-    list_for_each_entry_safe(pNode, pNodeN, &pTemNode->stDataListHead, stDataList)
-    {
-        list_del(&pNode->stDataList);
-        free(pNode);
-        pTemNode->intTotalListCnt--;
-    }
-    pthread_mutex_unlock(pdata_mutex);
-}
-
 static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_TEM_USER_DATA *pstData, pthread_mutex_t *pdata_mutex)
 {
     ST_TEM_DATA_NODE *pNode = NULL;
@@ -135,38 +118,73 @@ static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_T
     ASSERT(pNode);
     //printf("Malloc %lu\n", (unsigned long)pNode);
     pNode->stUserData.u32UserDataSize = 0;
+    pNode->stUserData.u32BufferRealSize = 0;
     if (pstData != NULL)
     {
         memcpy(&pNode->stUserData, pstData, sizeof(ST_TEM_USER_DATA));
     }
     pNode->enTemThrSt = enStatus;
     pthread_mutex_lock(pdata_mutex);
+    list_add_tail(&pNode->stDataList, &pTemNode->stDataListHead);
+    pTemNode->intTotalListCnt++;
+    pTemNode->intTotalDataCnt += pNode->stUserData.u32BufferRealSize;
+    pthread_mutex_unlock(pdata_mutex);
     if (enStatus == E_TEM_DO_USER_DATA)
     {
+        ST_TEM_DATA_NODE *pNodeDrop = NULL;
+        ST_TEM_DATA_NODE *pNodeDropEnd = NULL;
+
         //printf("total %d max %d total list %d max %d\n", pTemNode->intTotalDataCnt, pTemNode->maxDataCnt, pTemNode->intTotalListCnt, pTemNode->maxEventCout);
-        if (pTemNode->intTotalDataCnt > pTemNode->maxDataCnt
-            && pTemNode->bDropData)
+        if (pTemNode->intTotalDataCnt > pTemNode->maxDataCnt && pTemNode->bDropData)
         {
-            ERROR("Event data is over range %d!\n", pTemNode->intTotalDataCnt);
+            ERROR("Event data is over range %d[max: %d]! Drop data event!\n", pTemNode->intTotalDataCnt, pTemNode->maxDataCnt);
+            pNodeDrop = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
+            ASSERT(pNodeDrop);
+            pNodeDrop->stUserData.u32UserDataSize = 0;
+            pNodeDrop->stUserData.pUserData = NULL;
+            pNodeDrop->stUserData.u32BufferRealSize = 0;
+            pNodeDrop->enTemThrSt = E_TEM_DROP_USER_DATA;
+            pNodeDropEnd = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
+            ASSERT(pNodeDropEnd);
+            pNodeDropEnd->stUserData.u32UserDataSize = 0;
+            pNodeDropEnd->stUserData.pUserData = NULL;
+            pNodeDropEnd->stUserData.u32BufferRealSize = 0;
+            pNodeDropEnd->enTemThrSt = E_TEM_DROP_USER_DATA_END;
+
+            pthread_mutex_lock(pdata_mutex);
+            list_add(&pNodeDrop->stDataList, &pTemNode->stDataListHead);
+            list_add_tail(&pNodeDropEnd->stDataList, &pTemNode->stDataListHead);
+            pTemNode->intTotalListCnt += 2;
             pthread_mutex_unlock(pdata_mutex);
-            _TemFlushEvent(pTemNode, pdata_mutex);
-            ERROR("Drop data event!\n");
+
             return FALSE;
         }
-        if (pTemNode->intTotalListCnt > pTemNode->maxEventCout
-            && pTemNode->bDropEvent)
+        if (pTemNode->intTotalListCnt > pTemNode->maxEventCout && pTemNode->bDropEvent)
         {
-            ERROR("Event list is over range %d!\n", pTemNode->intTotalListCnt);
+            ERROR("Event list is over range %d[max: %d]! Drop data event!\n", pTemNode->intTotalListCnt, pTemNode->maxEventCout);
+            pNodeDrop = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
+            ASSERT(pNodeDrop);
+            pNodeDrop->stUserData.u32UserDataSize = 0;
+            pNodeDrop->stUserData.pUserData = NULL;
+            pNodeDrop->stUserData.u32BufferRealSize = 0;
+            pNodeDrop->enTemThrSt = E_TEM_DROP_USER_DATA;
+            pNodeDropEnd = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
+            ASSERT(pNodeDropEnd);
+            pNodeDropEnd->stUserData.u32UserDataSize = 0;
+            pNodeDropEnd->stUserData.pUserData = NULL;
+            pNodeDropEnd->stUserData.u32BufferRealSize = 0;
+            pNodeDropEnd->enTemThrSt = E_TEM_DROP_USER_DATA_END;
+
+            pthread_mutex_lock(pdata_mutex);
+            list_add(&pNodeDrop->stDataList, &pTemNode->stDataListHead);
+            list_add_tail(&pNodeDropEnd->stDataList, &pTemNode->stDataListHead);
+            pTemNode->intTotalListCnt += 2;
             pthread_mutex_unlock(pdata_mutex);
-            _TemFlushEvent(pTemNode, pdata_mutex);
-            ERROR("Drop event!\n");
+
             return FALSE;
         }
     }
-    list_add_tail(&pNode->stDataList, &pTemNode->stDataListHead);
-    pTemNode->intTotalListCnt++;
-    pTemNode->intTotalDataCnt += pNode->stUserData.u32UserDataSize;
-    pthread_mutex_unlock(pdata_mutex);
+
     return TRUE;
 }
 static EN_TEM_STATUS _TemPopEvent(ST_TEM_NODE *pTemNode, ST_TEM_USER_DATA *pstData, pthread_mutex_t *pdata_mutex)
@@ -200,7 +218,7 @@ static EN_TEM_STATUS _TemPopEvent(ST_TEM_NODE *pTemNode, ST_TEM_USER_DATA *pstDa
     memcpy(pstData, &pNode->stUserData, sizeof(ST_TEM_USER_DATA));
     list_del(&pNode->stDataList);
     pTemNode->intTotalListCnt--;
-    pTemNode->intTotalDataCnt -= pNode->stUserData.u32UserDataSize;
+    pTemNode->intTotalDataCnt -= pNode->stUserData.u32BufferRealSize;
     pthread_mutex_unlock(pdata_mutex);
     //printf("Free %lu\n", (unsigned long)pNode);
     free(pNode);
@@ -212,6 +230,7 @@ static void *_TemThreadMain(void * pArg)
     int intCondWaitRev = 0;
     struct timespec stOuttime;
     MI_BOOL bRunOneShot = FALSE;
+    MI_U16 u16DropEvent = 0;
     MI_U32 u32FuncRunTime = 0;
     MI_BOOL bRun = TRUE;
     MI_U32 u32TimeOut = 0xFFFFFFFF;
@@ -280,17 +299,40 @@ static void *_TemThreadMain(void * pArg)
                     break;
                 case E_TEM_DO_USER_DATA:
                     {
-                        if (pTempNode->pTemAttr->fpThreadDoSignal)
+                        if (u16DropEvent)
                         {
-                            INFO("Do user data thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                            pTempNode->pTemAttr->fpThreadDoSignal(pTempNode->pTemAttr->stTemBuf, stData);
-                            if (stData.u32UserDataSize != 0)
+                            //ERROR("Do user data thread id:[%x], name[%s] Drop event!\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                            if (pTempNode->pTemAttr->fpThreadDropEvent)
                             {
-                                INFO("Free buffer %lu\n", (unsigned long)stData.pUserData);
-                                free(stData.pUserData);
-                                stData.pUserData = NULL;
+                                pTempNode->pTemAttr->fpThreadDropEvent(pTempNode->pTemAttr->stTemBuf, stData);
                             }
                         }
+                        else
+                        {
+                            INFO("Do user data thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                            if (pTempNode->pTemAttr->fpThreadDoSignal)
+                            {
+                                pTempNode->pTemAttr->fpThreadDoSignal(pTempNode->pTemAttr->stTemBuf, stData);
+                            }
+                        }
+                        if (stData.u32UserDataSize != 0)
+                        {
+                            INFO("Free buffer %lu\n", (unsigned long)stData.pUserData);
+                            free(stData.pUserData);
+                            stData.pUserData = NULL;
+                        }
+                    }
+                    break;
+                case E_TEM_DROP_USER_DATA:
+                    {
+                        u16DropEvent++;
+                        ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
+                    }
+                    break;
+                case E_TEM_DROP_USER_DATA_END:
+                    {
+                        u16DropEvent--;
+                        ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
                     }
                     break;
                 default:

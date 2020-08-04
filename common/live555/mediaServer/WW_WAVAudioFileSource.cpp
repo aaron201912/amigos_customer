@@ -135,7 +135,7 @@ void WW_WAVAudioFileSource::doReadFromFile()
 	} else if (iFrameSize == 0) {
 		//nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
 		//		(TaskFunc*)FramedSource::afterGetting, this);
-		nextTask() = envir().taskScheduler().scheduleDelayedTask(1,
+		nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
 				(TaskFunc*)WW_WAVAudioFileSource::doGetNextFrameStatic, this);
 		return ;
 	}

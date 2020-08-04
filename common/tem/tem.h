@@ -59,6 +59,7 @@ typedef struct
 {
 	void *pUserData;
 	MI_U32 u32UserDataSize;
+	MI_U32 u32BufferRealSize;
 }ST_TEM_USER_DATA;
 typedef struct
 {
@@ -74,6 +75,7 @@ typedef struct{
     MI_U32 u32ThreadTimeoutMs;
     FP_TEM_DOMONITOR fpThreadWaitTimeOut;
     FP_TEM_DOSIGNAL fpThreadDoSignal;
+    FP_TEM_DOSIGNAL fpThreadDropEvent;
     ST_TEM_BUFFER stTemBuf;
     unsigned int maxEventCout;
     unsigned int maxDataCout;

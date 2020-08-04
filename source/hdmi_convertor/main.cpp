@@ -568,6 +568,7 @@ static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<
     enCmd = E_START_MONITOR;
     stData.pUserData = (void *)&enCmd;
     stData.u32UserDataSize = sizeof(EN_TC_MonitorCmd_e);
+    stData.u32BufferRealSize = 0;
     TemSend("tc358743xbg_monitor", stData);
     TemStartMonitor("tc358743xbg_monitor");
 }
@@ -580,6 +581,7 @@ static void tc358743xbgDeinit()
     enCmd = E_EXIT_MONITOR;
     stData.pUserData = (void *)&enCmd;
     stData.u32UserDataSize = sizeof(EN_TC_MonitorCmd_e);
+    stData.u32BufferRealSize = 0;
     TemSend("tc358743xbg_monitor", stData);
     TemClose("tc358743xbg_monitor");
 }

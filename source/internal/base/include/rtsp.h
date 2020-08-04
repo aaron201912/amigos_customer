@@ -262,6 +262,7 @@ private:
     // redefined virtual functions:
     virtual Boolean continuePlaying();
     static void *AudioSender(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData);
+    static void *AudioSenderEventDrop(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData);
     static void AudioPcmCopyS16beToS16le(void *pDstBuf, void *pSrcBuf, unsigned int uintDataLen); //big endian to little endian
 
 private:

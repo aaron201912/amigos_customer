@@ -481,13 +481,14 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
                 PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
                 memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
                 stTemAttr.fpThreadDoSignal = AudioSender;
+                stTemAttr.fpThreadDropEvent = AudioSenderEventDrop;
                 stTemAttr.fpThreadWaitTimeOut = NULL;
                 stTemAttr.u32ThreadTimeoutMs = -1;
                 stTemAttr.bSignalResetTimer = 0;
                 stTemAttr.stTemBuf.pTemBuffer = (void *)this;
                 stTemAttr.stTemBuf.u32TemBufferSize = 0;
-                stTemAttr.maxEventCout = 30;
-                stTemAttr.bDropEvent = TRUE;
+                stTemAttr.maxDataCout = stStreamInfo.stPcmInfo.uintBitRate * stStreamInfo.stPcmInfo.uintBitLength * stStreamInfo.stPcmInfo.uintChannelCnt / 16;
+                stTemAttr.bDropData = TRUE;
                 snprintf(audioSenderName, 40, "rtsp_audio_sender_%d", pstClientOutInfo->uintAudioOutPort);
                 TemOpen(audioSenderName, stTemAttr);
                 uConnection = 2;
@@ -495,6 +496,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
             ST_TEM_USER_DATA stUsrData;
             stUsrData.pUserData = (void *)&stStreamInfo;
             stUsrData.u32UserDataSize = sizeof(stStreamInfo_t);
+            stUsrData.u32BufferRealSize = stStreamInfo.stPcmInfo.uintDataSize; //add for drop data
             TemSend(audioSenderName, stUsrData);
         }
     }
@@ -561,7 +563,20 @@ void *DummySink::AudioSender(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
 
     return NULL;
 }
+void *DummySink::AudioSenderEventDrop(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
+{
+    DummySink *pObj = (DummySink *)stBuf.pTemBuffer;
+    stStreamInfo_t *pstStreamInfo;
 
+    ASSERT(pObj);
+    ASSERT(stUsrData.u32UserDataSize == sizeof(stStreamInfo_t));
+    pstStreamInfo = (stStreamInfo_t *)stUsrData.pUserData;
+    free(pstStreamInfo->stPcmInfo.pData);
+    pstStreamInfo->stPcmInfo.pData = NULL;
+
+    return NULL;
+
+}
 void DummySink::AudioPcmCopyS16beToS16le(void *pDstBuf, void *pSrcBuf, unsigned int uintDataLen)
 {
     unsigned int i = 0;
@@ -1494,11 +1509,13 @@ void Rtsp::Start()
         stClientEvent.ucharCmd = 0;
         stUserData.pUserData = (void *)&stClientEvent;
         stUserData.u32UserDataSize = sizeof(stRtspClientEvent_t);
+        stUserData.u32BufferRealSize = 0;
         TemSend(itMapRtspOut->first.c_str(), stUserData);        
         stClientEvent.pstrUrl = itMapRtspOut->first.c_str();
         stClientEvent.ucharCmd = 1;
         stUserData.pUserData = (void *)&stClientEvent;
         stUserData.u32UserDataSize = sizeof(stRtspClientEvent_t);
+        stUserData.u32BufferRealSize = 0;
         TemSend(itMapRtspOut->first.c_str(), stUserData);
     }
 }

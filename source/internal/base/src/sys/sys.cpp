@@ -697,6 +697,7 @@ int Sys::StartSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDes
 
     stUsrData.pUserData = &stState;
     stUsrData.u32UserDataSize = sizeof(stSenderState_t);
+    stUsrData.u32BufferRealSize = 0;
     TemSend(mapModOutputInfo[outPortId].curIoKeyString.c_str(), stUsrData);
     if (mapRecevier[outPortId].uintRefsCnt == 0)
     {
@@ -721,6 +722,7 @@ int Sys::StopSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc
     }
     stUsrData.pUserData = &stState;
     stUsrData.u32UserDataSize = sizeof(stSenderState_t);
+    stUsrData.u32BufferRealSize = 0;
     TemSend(mapModOutputInfo[outPortId].curIoKeyString.c_str(), stUsrData);
 
     return 0;
