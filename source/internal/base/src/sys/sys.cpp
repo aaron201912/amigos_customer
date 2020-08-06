@@ -1058,7 +1058,6 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
         {
             MI_AUDIO_Frame_t stFrm;
             MI_AUDIO_AecFrame_t stAecFrm;
-            stEsPackage_t stEsPacket;
 
             memset(&stFrm, 0, sizeof(MI_AUDIO_Frame_t));
             memset(&stAecFrm, 0, sizeof(MI_AUDIO_AecFrame_t));
@@ -1067,14 +1066,12 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                 stStreamInfo.eStreamType = E_STREAM_PCM;
                 stStreamInfo.stCodecInfo.uintPackCnt = 1;
 #ifndef SSTAR_CHIP_I2
-                stEsPacket.pData = (char *)stFrm.apSrcPcmVirAddr[0];
-                stEsPacket.uintDataSize = stFrm.u32SrcPcmLen;
+                stStreamInfo.stPcmInfo.pData = (char *)stFrm.apSrcPcmVirAddr[0];
+                stStreamInfo.stPcmInfo.uintDataSize = stFrm.u32SrcPcmLen;
 #else
-                stEsPacket.pData = (char *)stFrm.apVirAddr[0];
-                stEsPacket.uintDataSize = stFrm.u32Len;
+                stStreamInfo.stPcmInfo.pData = (char *)stFrm.apVirAddr[0];
+                stStreamInfo.stPcmInfo.uintDataSize = stFrm.u32Len;
 #endif
-                stStreamInfo.stCodecInfo.pDataAddr = &stEsPacket;
-                stStreamInfo.stCodecInfo.uintPackCnt = 1;
                 pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
                 MI_AI_ReleaseFrame(pClass->stModDesc.devId, pClass->stModDesc.chnId, &stFrm, &stAecFrm);
             }

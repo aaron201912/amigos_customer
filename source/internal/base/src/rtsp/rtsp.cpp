@@ -39,7 +39,7 @@
 
 #define RTSP_LISTEN_PORT        554
 #define BUF_POOL_MAX 120
-#define BUF_AUDIO_POOL_MAX 2
+#define BUF_AUDIO_POOL_MAX 20
 
 
 std::map<std::string, stRtspInputInfo_t> Rtsp::mRtspInputInfo;
@@ -456,7 +456,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
 
     tmpMediaStr = fSubsession.mediumName();
     tmpCodecStr = fSubsession.codecName();
-    //envir() << "Media type : " << tmpMediaStr.c_str() << " Codec : " << tmpCodecStr.c_str();
+    //envir() << "Media type : " << tmpMediaStr.c_str() << " Codec : " << tmpCodecStr.c_str() << "\n";
     if (tmpMediaStr == "audio"
         && tmpCodecStr == "L16")
     {
@@ -640,17 +640,36 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
     pstRtspDataPackage = (stRtspDataPackage_t *)malloc(sizeof(stRtspDataPackage_t));
     ASSERT(pstRtspDataPackage);
     memset(pstRtspDataPackage, 0, sizeof(stRtspDataPackage_t));
-    for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+    switch (pstStream->eStreamType)
     {
-        ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-        pstRtspDataPackage->u32DataLen += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
-    }
-    pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
-    ASSERT(pstRtspDataPackage->pDataAddr);
-    for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
-    {
-        memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-        u32Len += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+        case E_STREAM_H264:
+        case E_STREAM_H265:
+        case E_STREAM_JPEG:
+        {
+            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            {
+                ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
+                pstRtspDataPackage->u32DataLen += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+            }
+            pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
+            ASSERT(pstRtspDataPackage->pDataAddr);
+            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            {
+                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
+                u32Len += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+            }
+        }
+        break;
+        case E_STREAM_PCM:
+        {
+            pstRtspDataPackage->u32DataLen = pstStream->stPcmInfo.uintDataSize;
+            pstRtspDataPackage->pDataAddr = (void *)malloc(pstStream->stPcmInfo.uintDataSize);
+            ASSERT(pstRtspDataPackage->pDataAddr);
+            memcpy((char *)pstRtspDataPackage->pDataAddr, pstStream->stPcmInfo.pData, pstStream->stPcmInfo.uintDataSize);
+        }
+        break;
+        default:
+            ASSERT(0);
     }
     pthread_mutex_lock(&stDataMuxCond.mutex);
     iter = mapRtspDataPackage.find(portId);
