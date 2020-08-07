@@ -38,8 +38,8 @@
 #include "onvif_server.h"
 
 #define RTSP_LISTEN_PORT        554
-#define BUF_POOL_MAX 120
-#define BUF_AUDIO_POOL_MAX 4
+#define BUF_POOL_MAX 60
+#define BUF_AUDIO_POOL_MAX 3
 
 
 std::map<std::string, stRtspInputInfo_t> Rtsp::mRtspInputInfo;
@@ -711,15 +711,20 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
     }
     if (iter->second.totalCount > iter->second.maxCount)
     {
-        stRtspDataPackage_t *pstFirstPackage = NULL;
+        stRtspDataPackage_t *pos, *posN;
 
+        list_for_each_entry_safe(pos, posN, &iter->second.stDataList, stDataList)
+        {
+            if (!pos->bExit)
+            {
+                ASSERT(pos->u32FrmRef);
+                free(pos->pDataAddr);
+                iter->second.totalCount--;
+                list_del(&pos->stDataList);
+                free(pos);
+            }
+        }
         printf("Error!!!!Port %d buf pool full!!!!! Maybe client did not close or the network environment is bad.\n", portId);
-        pstFirstPackage = list_first_entry(&iter->second.stDataList, stRtspDataPackage_t, stDataList);
-        free(pstFirstPackage->pDataAddr);
-        pstFirstPackage->pDataAddr = NULL;
-        list_del(&pstFirstPackage->stDataList);
-        free(pstFirstPackage);
-        iter->second.totalCount--;
     }
     pstRtspDataPackage->u32FrmRef = iter->second.uintRefCnt;
     pstRtspDataPackage->u32FrmCnt = ++(iter->second.uintCurFrmCnt);

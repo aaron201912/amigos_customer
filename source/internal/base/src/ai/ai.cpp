@@ -47,7 +47,7 @@ void Ai::Init()
     stAiPubAttr.u32ChnCnt = stAiInfo.uintChannelCnt;
     stAiPubAttr.u32CodecChnCnt = 0; // useless
     stAiPubAttr.u32FrmNum = 6;  // useless
-    stAiPubAttr.u32PtNumPerFrm = stAiPubAttr.eSamplerate / 64; // for aec
+    stAiPubAttr.u32PtNumPerFrm = stAiPubAttr.eSamplerate / 32; // for aec
     stAiPubAttr.WorkModeSetting.stI2sConfig.bSyncClock = TRUE;
     stAiPubAttr.WorkModeSetting.stI2sConfig.eFmt = E_MI_AUDIO_I2S_FMT_I2S_MSB;
     stAiPubAttr.WorkModeSetting.stI2sConfig.eMclk = E_MI_AUDIO_I2S_MCLK_0;
