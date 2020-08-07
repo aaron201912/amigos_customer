@@ -118,12 +118,19 @@ void Vdec::Init()
     MI_VDEC_StartChn(stModDesc.chnId);
     for (itVdecOut = vDecOutInfo.begin(); itVdecOut != vDecOutInfo.end(); itVdecOut++)
     {
+        MI_SYS_ChnPort_t stChnPort;
+
 #ifndef SSTAR_CHIP_I2
         memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
         stOutputPortAttr.u16Width = itVdecOut->uintDecOutWidth;
         stOutputPortAttr.u16Height = itVdecOut->uintDecOutHeight;
         MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
 #endif
+        stChnPort.eModId = E_MI_MODULE_ID_VDEC;
+        stChnPort.u32ChnId = stModDesc.chnId;
+        stChnPort.u32DevId = stModDesc.devId;
+        stChnPort.u32PortId = itVdecOut->intPortId;
+        MI_SYS_SetChnOutputPortDepth(&stChnPort, 0, 5);
     }
 
 }
