@@ -108,7 +108,7 @@ int Live555RTSPServer::SetRTSPServerPort(unsigned short ourPort)
 	if ( m_pRTSPServer ) {
 		return -1;
 	}
-	m_pRTSPServer=RTSPServer::createNew(*m_pUsageEnvironment, ourPort, m_pUserAuthenticationDatabase);
+	m_pRTSPServer=RTSPServer::createNew(*m_pUsageEnvironment, ourPort, m_pUserAuthenticationDatabase, 10);
 	if ( m_pRTSPServer==NULL ) {
 		return -2;
 	}
