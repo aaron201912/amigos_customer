@@ -39,7 +39,7 @@
 
 #define RTSP_LISTEN_PORT        554
 #define BUF_POOL_MAX 120
-#define BUF_AUDIO_POOL_MAX 20
+#define BUF_AUDIO_POOL_MAX 4
 
 
 std::map<std::string, stRtspInputInfo_t> Rtsp::mRtspInputInfo;
