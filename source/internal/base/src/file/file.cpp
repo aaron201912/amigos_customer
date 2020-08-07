@@ -260,7 +260,7 @@ int File::CreateSender(unsigned int outPortId)
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
     stTemAttr.fpThreadDoSignal = SenderState;
     stTemAttr.fpThreadWaitTimeOut = SenderMonitor;
-    stTemAttr.u32ThreadTimeoutMs = 16;
+    stTemAttr.u32ThreadTimeoutMs = 17;
     stTemAttr.bSignalResetTimer = 0;
     stTemAttr.stTemBuf.pTemBuffer = (void *)&(mapRecevier[outPortId]);
     stTemAttr.stTemBuf.u32TemBufferSize = 0;

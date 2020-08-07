@@ -63,7 +63,6 @@ typedef struct
 typedef struct
 {
     std::vector<Sys *> * pVectVideoPipeLine;
-    std::vector<Sys *> * pVectAudioPipeLine;
     std::vector<Sys *> * pVectNoSignalVideoPipeLine;
     Sys * pDstObject;
     Tcxbg_state_e enCurState;
@@ -466,8 +465,6 @@ void *Tc358743xbgDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
             {
                 ES8156_Deinit();
                 printf("Signal lock need release!\n");
-                Sys::Extract(*pstPackage->pVectAudioPipeLine);
-                printf("Release audio done !\n");
                 Sys::Extract(*pstPackage->pVectVideoPipeLine);
                 printf("Release video done !\n");
             }
@@ -495,7 +492,7 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
 
     ASSERT(sizeof(stMonitorDataPackage_t) == stBuf.u32TemBufferSize);
     pstPackage = (stMonitorDataPackage_t *)stBuf.pTemBuffer;
-    if ((*pstPackage->pVectVideoPipeLine).size() == 0 || (*pstPackage->pVectAudioPipeLine).size() == 0 || (*pstPackage->pVectNoSignalVideoPipeLine).size() == 0)
+    if ((*pstPackage->pVectVideoPipeLine).size() == 0 || (*pstPackage->pVectNoSignalVideoPipeLine).size() == 0)
     {
         printf("Pipe line is empty!\n");
         return NULL;
@@ -517,8 +514,6 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         printf("Switch source done !\n");
         Sys::Insert(*pstPackage->pVectVideoPipeLine);
         printf("Insert video done !\n");
-        Sys::Insert(*pstPackage->pVectAudioPipeLine);
-        printf("Insert audio done !\n");
         Sys::Extract(*pstPackage->pVectNoSignalVideoPipeLine);
         printf("Release file done !\n");
 
@@ -536,15 +531,13 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
         printf("Insert source ok !\n");
         printf("Signal unlock %d\n", enTcState);
-        Sys::Extract(*pstPackage->pVectAudioPipeLine);
-        printf("Release audio done !\n");
         Sys::Extract(*pstPackage->pVectVideoPipeLine);
         printf("Release video done !\n");
     }
     pstPackage->enCurState = enTcState;
     return NULL;
 }
-static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys *> *pVectAudioPipeLine, std::vector<Sys *> *pVectNoSignalVideoPipeLine, Sys *pDstObj)
+static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys *> *pVectNoSignalVideoPipeLine, Sys *pDstObj)
 {
     ST_TEM_ATTR stTemAttr;
     stMonitorDataPackage_t stTmpPackage;
@@ -554,7 +547,6 @@ static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<
     memset(&stTmpPackage, 0, sizeof(stMonitorDataPackage_t));
     stTmpPackage.enCurState = E_S0_STATUS_POWEROFF;
     stTmpPackage.pVectVideoPipeLine = pVectVideoPipeLine;
-    stTmpPackage.pVectAudioPipeLine = pVectAudioPipeLine;
     stTmpPackage.pVectNoSignalVideoPipeLine = pVectNoSignalVideoPipeLine;
     stTmpPackage.pDstObject = pDstObj;
     MI_SNR_SetPlaneMode((MI_SNR_PAD_ID_e)0, FALSE);
@@ -596,13 +588,11 @@ int main(int argc, char **argv)
     std::map<std::string, unsigned int> mapModId;
     std::map<std::string, Sys *> maskMap;
     std::vector<Sys *> vectVideoPipeLine;
-    std::vector<Sys *> vectAudioPipeLine;
     std::vector<Sys *> vectNoSignalVideoPipeLine;
 
     std::string objName;
     Vif *VifObj = NULL;
     Vpe *VpeObj = NULL;
-    Ai *AiObj = NULL;
     Venc *VencObj = NULL;
     File *FileObj = NULL;
     Rtsp *RtspObj = NULL;
@@ -656,18 +646,6 @@ int main(int argc, char **argv)
     vectVideoPipeLine.push_back(VencObj);
     maskMap[objName] = VencObj;
 
-
-    objName = "AI_CH0_DEV0";
-    AiObj = dynamic_cast<Ai *>(Sys::GetInstance(objName));   
-    if (!AiObj)
-    {
-        printf("%s: Obj error!\n", objName.c_str());
-        Sys::DestroyObj();
-        return -1;
-    }
-    vectAudioPipeLine.push_back(AiObj);
-    maskMap[objName] = AiObj;
-
     objName = "FILE";
     FileObj = dynamic_cast<File *>(Sys::GetInstance(objName));
     if (!FileObj)
@@ -688,7 +666,7 @@ int main(int argc, char **argv)
         return -1;
     }
     Sys::Begin(maskMap);
-    tc358743xbgInit(&vectVideoPipeLine, &vectAudioPipeLine, &vectNoSignalVideoPipeLine, (Sys *)RtspObj);
+    tc358743xbgInit(&vectVideoPipeLine, &vectNoSignalVideoPipeLine, (Sys *)RtspObj);
     do
     {
         printf("Press 'q' to exit!\n");
