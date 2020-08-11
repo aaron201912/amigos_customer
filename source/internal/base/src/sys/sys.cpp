@@ -779,13 +779,44 @@ int Sys::Send(unsigned int outPortId, void *pData, unsigned int intDataSize)
 }
 int Sys::Connect(unsigned int outPortId, stStreamInfo_t *pInfo)
 {
+    Sys *pCurClass = NULL;
+    Sys *pNextClass = NULL;
     std::map<std::string, stReceiverPortDesc_t>::iterator it;
     std::map<std::string, stReceiverPortDesc_t> *pMap = &mapRecevier[outPortId].mapPortDesc;
+    std::map<unsigned int, stModOutputInfo_t>::iterator itMapOut;
+    std::map<unsigned int, stModInputInfo_t>::iterator itMapIn;
 
     pthread_mutex_lock(&mapRecevier[outPortId].stDeliveryMutex);
     for (it = pMap->begin(); it != pMap->end(); ++it)
     {
-        it->second.pSysClass->Incoming(pInfo);
+        pCurClass = it->second.pSysClass;
+        for (itMapOut = pCurClass->mapModOutputInfo.begin(); itMapOut != pCurClass->mapModOutputInfo.end(); ++itMapOut)
+        {
+            for (unsigned int i = 0; i < itMapOut->second.vectNext.size(); i++)
+            {
+                pNextClass = GetInstance(itMapOut->second.vectNext[i].modKeyString);
+                if (pNextClass)
+                    pNextClass->UnBindBlock(pNextClass->mapModInputInfo[itMapOut->second.vectNext[i].portId]);
+            }
+        }
+        for (itMapIn = pCurClass->mapModInputInfo.begin(); itMapIn != pCurClass->mapModInputInfo.end(); ++itMapIn)
+        {
+            pCurClass->UnBindBlock(itMapIn->second);
+        }
+        pCurClass->Incoming(pInfo);
+        for (itMapIn = pCurClass->mapModInputInfo.begin(); itMapIn != pCurClass->mapModInputInfo.end(); ++itMapIn)
+        {
+            pCurClass->BindBlock(itMapIn->second);
+        }
+        for (itMapOut = pCurClass->mapModOutputInfo.begin(); itMapOut != pCurClass->mapModOutputInfo.end(); ++itMapOut)
+        {
+            for (unsigned int i = 0; i < itMapOut->second.vectNext.size(); i++)
+            {
+                pNextClass = GetInstance(itMapOut->second.vectNext[i].modKeyString);
+                if (pNextClass)
+                    pNextClass->BindBlock(pNextClass->mapModInputInfo[itMapOut->second.vectNext[i].portId]);
+            }
+        }
     }
     pthread_mutex_unlock(&mapRecevier[outPortId].stDeliveryMutex);
 
@@ -859,7 +890,7 @@ int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, Delivery
         stReceiverDesc.mapPortDesc[mapModInputInfo[inPortId].curIoKeyString] = stReceiverPortDesc;
         stReceiverDesc.pSysClass = pPrevClass;
         stReceiverDesc.uintPort = intPrevOutPort;
-        stReceiverDesc.stDeliveryMutex = PTHREAD_MUTEX_INITIALIZER;
+        stReceiverDesc.stDeliveryMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
         stReceiverDesc.uintRefsCnt = 0;
         pPrevClass->mapRecevier[intPrevOutPort] = stReceiverDesc;
         pPrevClass->CreateSender(intPrevOutPort);
@@ -932,7 +963,10 @@ int Sys::StopReceiver(unsigned int inPortId)
     {
         pPrevClass->StopSender(intPrevOutPort, pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString]);
         pthread_mutex_lock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
-        pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString].bStart = FALSE;
+        if (pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.find(mapModInputInfo[inPortId].curIoKeyString) != pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.end())
+        {
+            pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString].bStart = FALSE;
+        }
         pthread_mutex_unlock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
     }
     else
@@ -948,6 +982,7 @@ int Sys::DestroyReceiver(unsigned int inPortId)
 {
     Sys *pPrevClass = NULL;
     unsigned int intPrevOutPort = 0;
+    unsigned char bDestroySender = FALSE;
     std::map<unsigned int, stReceiverDesc_t>::iterator it;
 
     if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
@@ -966,11 +1001,17 @@ int Sys::DestroyReceiver(unsigned int inPortId)
     intPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
     if (pPrevClass->mapRecevier.find(intPrevOutPort) != pPrevClass->mapRecevier.end())
     {
+        pthread_mutex_lock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
         if (pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.find(mapModInputInfo[inPortId].curIoKeyString) != pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.end())
         {
             pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.erase(mapModInputInfo[inPortId].curIoKeyString);
         }
         if (pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.size() == 0)
+        {
+            bDestroySender = TRUE;
+        }
+        pthread_mutex_unlock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
+        if (bDestroySender)
         {
             pPrevClass->DestroySender(intPrevOutPort);
             pPrevClass->mapRecevier.erase(intPrevOutPort);

@@ -261,7 +261,7 @@ class Sys
         static void Extract(std::vector<Sys *> &objVect);
         static void Insert(std::vector<Sys *> &objVect);
         static void SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsigned int srcOutPortNew, Sys *dstObj, unsigned int dstInPort);
-        static Sys* GetInstance(std::string &strKey){return connectMap[strKey];}
+        static Sys* GetInstance(std::string &strKey){return (connectMap.find(strKey) != connectMap.end()) ? connectMap[strKey] : NULL;}
         void GetModDesc(stModDesc_t &stDesc){stDesc = stModDesc;}
 
     protected:
