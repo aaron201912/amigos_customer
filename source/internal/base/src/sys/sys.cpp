@@ -781,13 +781,13 @@ int Sys::Connect(unsigned int outPortId, stStreamInfo_t *pInfo)
 {
     Sys *pCurClass = NULL;
     Sys *pNextClass = NULL;
-    std::map<std::string, stReceiverPortDesc_t>::iterator it;
+    std::map<std::string, stReceiverPortDesc_t>::iterator it, itN;
     std::map<std::string, stReceiverPortDesc_t> *pMap = &mapRecevier[outPortId].mapPortDesc;
     std::map<unsigned int, stModOutputInfo_t>::iterator itMapOut;
     std::map<unsigned int, stModInputInfo_t>::iterator itMapIn;
 
     pthread_mutex_lock(&mapRecevier[outPortId].stDeliveryMutex);
-    for (it = pMap->begin(); it != pMap->end(); ++it)
+    for (it = itN = pMap->begin(), ++itN; it != pMap->end(); it = itN, ++itN)
     {
         pCurClass = it->second.pSysClass;
         for (itMapOut = pCurClass->mapModOutputInfo.begin(); itMapOut != pCurClass->mapModOutputInfo.end(); ++itMapOut)
