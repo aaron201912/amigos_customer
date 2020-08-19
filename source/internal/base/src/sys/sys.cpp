@@ -781,13 +781,12 @@ int Sys::Connect(unsigned int outPortId, stStreamInfo_t *pInfo)
 {
     Sys *pCurClass = NULL;
     Sys *pNextClass = NULL;
-    std::map<std::string, stReceiverPortDesc_t>::iterator it, itN;
+    std::map<std::string, stReceiverPortDesc_t>::iterator it;
     std::map<std::string, stReceiverPortDesc_t> *pMap = &mapRecevier[outPortId].mapPortDesc;
     std::map<unsigned int, stModOutputInfo_t>::iterator itMapOut;
-    std::map<unsigned int, stModInputInfo_t>::iterator itMapIn;
 
     pthread_mutex_lock(&mapRecevier[outPortId].stDeliveryMutex);
-    for (it = itN = pMap->begin(), ++itN; it != pMap->end(); it = itN, ++itN)
+    for (it = pMap->begin(); it != pMap->end(); ++it)
     {
         pCurClass = it->second.pSysClass;
         for (itMapOut = pCurClass->mapModOutputInfo.begin(); itMapOut != pCurClass->mapModOutputInfo.end(); ++itMapOut)
@@ -799,15 +798,7 @@ int Sys::Connect(unsigned int outPortId, stStreamInfo_t *pInfo)
                     pNextClass->UnBindBlock(pNextClass->mapModInputInfo[itMapOut->second.vectNext[i].portId]);
             }
         }
-        for (itMapIn = pCurClass->mapModInputInfo.begin(); itMapIn != pCurClass->mapModInputInfo.end(); ++itMapIn)
-        {
-            pCurClass->UnBindBlock(itMapIn->second);
-        }
         pCurClass->Incoming(pInfo);
-        for (itMapIn = pCurClass->mapModInputInfo.begin(); itMapIn != pCurClass->mapModInputInfo.end(); ++itMapIn)
-        {
-            pCurClass->BindBlock(itMapIn->second);
-        }
         for (itMapOut = pCurClass->mapModOutputInfo.begin(); itMapOut != pCurClass->mapModOutputInfo.end(); ++itMapOut)
         {
             for (unsigned int i = 0; i < itMapOut->second.vectNext.size(); i++)
@@ -890,7 +881,7 @@ int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, Delivery
         stReceiverDesc.mapPortDesc[mapModInputInfo[inPortId].curIoKeyString] = stReceiverPortDesc;
         stReceiverDesc.pSysClass = pPrevClass;
         stReceiverDesc.uintPort = intPrevOutPort;
-        stReceiverDesc.stDeliveryMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+        stReceiverDesc.stDeliveryMutex = PTHREAD_MUTEX_INITIALIZER;
         stReceiverDesc.uintRefsCnt = 0;
         pPrevClass->mapRecevier[intPrevOutPort] = stReceiverDesc;
         pPrevClass->CreateSender(intPrevOutPort);
