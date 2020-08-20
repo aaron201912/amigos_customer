@@ -268,6 +268,8 @@ private:
 private:
     unsigned char uConnection; //0: no chnnection 1: video 2: audio
     u_int8_t* fReceiveBufferTittle;
+    u_int32_t u32MultiSliceOffset;
+
     u_int8_t* fReceiveBuffer;
     MediaSubsession& fSubsession;
     char* fStreamId;

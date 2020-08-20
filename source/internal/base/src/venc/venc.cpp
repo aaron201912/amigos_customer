@@ -88,6 +88,8 @@ void Venc::LoadDb()
     stVencInfo.intBitRate = GetIniInt(stModDesc.modKeyString,"BIT_RATE");
     stVencInfo.intEncodeType = GetIniInt(stModDesc.modKeyString,"EN_TYPE");
     stVencInfo.intEncodeFps = GetIniInt(stModDesc.modKeyString,"EN_FPS");
+    stVencInfo.intMultiSlice = GetIniInt(stModDesc.modKeyString,"MULTI_SLICE");
+    stVencInfo.intSliceRowCnt = GetIniInt(stModDesc.modKeyString,"SLICE_ROW_CNT");
 }
 void Venc::Init()
 {
@@ -104,7 +106,7 @@ void Venc::Init()
             stChnAttr.stVeAttr.stAttrH264e.u32PicHeight = (MI_U32)stVencInfo.intHeight;
             stChnAttr.stVeAttr.stAttrH264e.u32MaxPicWidth = (MI_U32)stVencInfo.intWidth;
             stChnAttr.stVeAttr.stAttrH264e.u32MaxPicHeight = (MI_U32)stVencInfo.intHeight;
-            stChnAttr.stVeAttr.stAttrH264e.bByFrame = TRUE;
+            stChnAttr.stVeAttr.stAttrH264e.bByFrame = (stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE;
             stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H264VBR;
             stChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.intBitRate) * 1024 * 1024;
             stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
@@ -122,7 +124,7 @@ void Venc::Init()
             stChnAttr.stVeAttr.stAttrH265e.u32PicHeight = (MI_U32)stVencInfo.intHeight;
             stChnAttr.stVeAttr.stAttrH265e.u32MaxPicWidth = (MI_U32)stVencInfo.intWidth;
             stChnAttr.stVeAttr.stAttrH265e.u32MaxPicHeight = (MI_U32)stVencInfo.intHeight;
-            stChnAttr.stVeAttr.stAttrH265e.bByFrame = TRUE;
+            stChnAttr.stVeAttr.stAttrH265e.bByFrame = (stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE;
             stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H265VBR;
             stChnAttr.stRcAttr.stAttrH265Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.intBitRate) * 1024 * 1024;
             stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
@@ -154,6 +156,28 @@ void Venc::Init()
     }
     Venc_CreateChannel((MI_VENC_CHN)stModDesc.chnId, &stChnAttr);
     MI_VENC_GetChnDevid((MI_VENC_CHN)stModDesc.chnId, &stModDesc.devId);
+    if ((stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE)
+    {
+        switch (stVencInfo.intEncodeType)
+        {
+            case E_STREAM_H264:
+                MI_VENC_ParamH264SliceSplit_t stH264SliceSplit;
+
+                stH264SliceSplit.bSplitEnable = stVencInfo.intMultiSlice;
+                stH264SliceSplit.u32SliceRowCount = stVencInfo.intSliceRowCnt;
+                MI_VENC_SetH264SliceSplit((MI_VENC_CHN)stModDesc.chnId, &stH264SliceSplit);
+                break;
+            case E_STREAM_H265:
+                MI_VENC_ParamH265SliceSplit_t stH265SliceSplit;
+
+                stH265SliceSplit.bSplitEnable = stVencInfo.intMultiSlice;
+                stH265SliceSplit.u32SliceRowCount = stVencInfo.intSliceRowCnt;
+                MI_VENC_SetH265SliceSplit((MI_VENC_CHN)stModDesc.chnId, &stH265SliceSplit);
+                break;
+            default:
+                break;
+        }
+    }
 #ifndef SSTAR_CHIP_I2
     MI_VENC_InputSourceConfig_t stVenInSrc;
     MI_SYS_BindType_e eBindType = E_MI_SYS_BIND_TYPE_FRAME_BASE;

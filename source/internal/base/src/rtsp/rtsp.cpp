@@ -136,7 +136,7 @@ void Rtsp::continueAfterDESCRIBE(RTSPClient* rtspClient, int resultCode, char* r
 void Rtsp::setupNextSubsession(RTSPClient* rtspClient) {
   UsageEnvironment& env = rtspClient->envir(); // alias
   StreamClientState& scs = ((ourRTSPClient*)rtspClient)->scs; // alias
-  
+
   scs.subsession = scs.iter->next();
   if (scs.subsession != NULL) {
     if (!scs.subsession->initiate()) {
@@ -198,7 +198,7 @@ void Rtsp::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, char* resu
     }
 
     env << *rtspClient << "Created a data sink for the \"" << *scs.subsession << "\" subsession\n";
-    scs.subsession->miscPtr = rtspClient; // a hack to let subsession handler functions get the "RTSPClient" from the subsession 
+    scs.subsession->miscPtr = rtspClient; // a hack to let subsession handler functions get the "RTSPClient" from the subsession
     scs.subsession->sink->startPlaying(*(scs.subsession->readSource()),
 				       subsessionAfterPlaying, scs.subsession);
     // Also set a handler to be called if a RTCP "BYE" arrives for this subsession:
@@ -289,7 +289,7 @@ void Rtsp::subsessionByeHandler(void* clientData, char const* reason) {
   subsessionAfterPlaying(subsession);
 }
 void Rtsp::streamByeBye(void* clientData) {
-    ourRTSPClient* rtspClient = (ourRTSPClient*)clientData;    
+    ourRTSPClient* rtspClient = (ourRTSPClient*)clientData;
     shutdownStream(rtspClient);
 }
 
@@ -308,7 +308,7 @@ void Rtsp::shutdownStream(RTSPClient* rtspClient, int exitCode) {
   StreamClientState& scs = ((ourRTSPClient*)rtspClient)->scs; // alias
 
   // First, check whether any subsessions have still to be closed:
-  if (scs.session != NULL) { 
+  if (scs.session != NULL) {
     Boolean someSubsessionsWereActive = False;
     MediaSubsessionIterator iter(*scs.session);
     MediaSubsession* subsession;
@@ -399,6 +399,7 @@ DummySink::DummySink(UsageEnvironment& env, MediaSubsession& subsession, char co
     rtspObj = &(pEnv->rtspReferance);
     pstClientOutInfo = &(pEnv->stClientOutInfo);
     uConnection = 0;
+    u32MultiSliceOffset = 0;
 }
 
 DummySink::~DummySink() {
@@ -414,7 +415,7 @@ DummySink::~DummySink() {
         uConnection = 0;
     }
     delete[] fReceiveBufferTittle;
-    delete[] fStreamId;  
+    delete[] fStreamId;
 }
 
 void DummySink::afterGettingFrame(void* clientData, unsigned frameSize, unsigned numTruncatedBytes,
@@ -476,7 +477,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
             if (uConnection == 0)
             {
                 ST_TEM_ATTR stTemAttr;
-                
+
                 rtspObj->Connect(pstClientOutInfo->uintAudioOutPort, &stStreamInfo);
                 PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
                 memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
@@ -502,19 +503,49 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
     }
     else if (tmpMediaStr == "video")
     {
+        unsigned char *pCharHolder = NULL;
+        unsigned int *pIntHolder = NULL;
+        unsigned char bFirstFrame = 0;
+        unsigned char bFrameEnd = 0;
+        unsigned char u8NaluType = 0;
+
+        pCharHolder = fReceiveBuffer + u32MultiSliceOffset;
+        pIntHolder = (unsigned int *)pCharHolder;
         if (tmpCodecStr == "H264")
         {
             stStreamInfo.eStreamType = E_STREAM_H264;
+            u8NaluType = pCharHolder[0] & 0x1F;
+            if ((pCharHolder[1] & 0x80) && (u8NaluType >= 1 && u8NaluType <= 5))
+            {
+                //Is frist frame.
+                bFirstFrame = TRUE;
+            }
+            if (pIntHolder[0] == 0x5353001E)
+            {
+                //We use NAL_UNIT_RESERVED_30 for slice end
+                bFrameEnd = TRUE;
+            }
         }
         else if (tmpCodecStr == "H265")
         {
             stStreamInfo.eStreamType = E_STREAM_H265;
+            u8NaluType = (pCharHolder[0] & 0x7E) >> 1;
+            if ((pCharHolder[2] & 0x80) && u8NaluType <= 31)
+            {
+                //Is frist frame.
+                bFirstFrame = TRUE;
+            }
+            if (pIntHolder[0] == 0x5353003C)
+            {
+                //We use NAL_UNIT_RESERVED_30 for slice end
+                bFrameEnd = TRUE;
+            }
         }
         else
         {
             printf("not support format [%s]!\n", tmpCodecStr.c_str());
             return;
-            
+
         }
         if (uConnection == 0)
         {
@@ -529,12 +560,40 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         stStreamInfo.stCodecInfo.streamHeight = fSubsession.videoHeight();
         //envir() << " Width : " << stStreamInfo.streamWidth << " Height : " << stStreamInfo.streamHeight << " FPS : " << fSubsession.videoFPS();
         //envir() << tmpCodecStr.c_str() << " Buf size " << frameSize << " Buffer : "<< (void *)fReceiveBuffer <<"\n";
-        stEsPackage.pData = (char *)fReceiveBufferTittle;
-        stEsPackage.uintDataSize = frameSize + 4;
-        stStreamInfo.stCodecInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
-        stStreamInfo.stCodecInfo.pDataAddr = &stEsPackage;
-        stStreamInfo.stCodecInfo.uintPackCnt = 1;
-        rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamInfo, sizeof(stStreamInfo_t));
+
+        //printf("Get data 0x%x 0x%x 0x%x, 0x%x\n", pCharHolder[0], pCharHolder[1], pCharHolder[2], pCharHolder[3]);
+        if (bFrameEnd || u32MultiSliceOffset + frameSize + 4 > DUMMY_SINK_RECEIVE_BUFFER_SIZE)
+        {
+            //printf("Get frame end : slice offset %d\n", u32MultiSliceOffset);
+            stEsPackage.pData = (char *)fReceiveBufferTittle;
+            stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
+            stStreamInfo.stCodecInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
+            stStreamInfo.stCodecInfo.pDataAddr = &stEsPackage;
+            stStreamInfo.stCodecInfo.uintPackCnt = 1;
+            rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamInfo, sizeof(stStreamInfo_t));
+            u32MultiSliceOffset = 0;
+        }
+        else
+        {
+            if (bFirstFrame && u32MultiSliceOffset != 0)
+            {
+                //Standard multil slice code next first frame triggle prev frame.
+                //printf("Get first frame! slice offset %d current size %d\n", u32MultiSliceOffset, frameSize);
+                stEsPackage.pData = (char *)fReceiveBufferTittle;
+                stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
+                stStreamInfo.stCodecInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
+                stStreamInfo.stCodecInfo.pDataAddr = &stEsPackage;
+                stStreamInfo.stCodecInfo.uintPackCnt = 1;
+                rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamInfo, sizeof(stStreamInfo_t));
+                memcpy(fReceiveBuffer, pCharHolder, frameSize);
+                pCharHolder = fReceiveBuffer;
+                u32MultiSliceOffset = 0;
+            }
+            pIntHolder = (unsigned int *)(pCharHolder + frameSize);
+            pIntHolder[0] = 0x01000000;
+            u32MultiSliceOffset += frameSize + 4;
+
+        }
     }
     // Then continue, to request the next frame of data:
     continuePlaying();
@@ -544,7 +603,7 @@ Boolean DummySink::continuePlaying() {
   if (fSource == NULL) return False; // sanity check (should not happen)
 
   // Request the next frame of data from our input source.  "afterGettingFrame()" will get called later, when it arrives:
-  fSource->getNextFrame(fReceiveBuffer, DUMMY_SINK_RECEIVE_BUFFER_SIZE,
+  fSource->getNextFrame(fReceiveBuffer + u32MultiSliceOffset, DUMMY_SINK_RECEIVE_BUFFER_SIZE - u32MultiSliceOffset,
                         afterGettingFrame, this,
                         onSourceClosure, this);
   return True;
@@ -644,6 +703,33 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
     {
         case E_STREAM_H264:
         case E_STREAM_H265:
+        {
+            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            {
+                ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
+                pstRtspDataPackage->u32DataLen += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+                if (pstStream->stCodecInfo.pDataAddr[i].bSliceEnd)
+                {
+                    pstRtspDataPackage->u32DataLen += 8;
+                }
+            }
+            pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
+            ASSERT(pstRtspDataPackage->pDataAddr);
+            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            {
+                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
+                u32Len += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+                if (pstStream->stCodecInfo.pDataAddr[i].bSliceEnd)
+                {
+                    unsigned int *pintHolder = NULL;
+
+                    pintHolder = (unsigned int *)((char *)pstRtspDataPackage->pDataAddr + u32Len);
+                    *pintHolder++ = 0x01000000;
+                    *pintHolder = pstStream->stCodecInfo.pDataAddr[i].uintEndNalu; //use NAL_UNIT_RESERVED_30 for slice end
+                }
+            }
+        }
+        break;
         case E_STREAM_JPEG:
         {
             for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
@@ -679,7 +765,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
         pstRtspDataPackage->pDataAddr =  NULL;
         free(pstRtspDataPackage);
         pthread_mutex_unlock(&stDataMuxCond.mutex);
-        
+
         return;
     }
     if (!list_empty(&iter->second.stDataList))
@@ -866,7 +952,7 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
     {
         pCharAddr = (char *)pData;
         stRtspDataPackage_t *pos;
-        
+
         pos = list_first_entry(&iter->second.stDataList, stRtspDataPackage_t, stDataList);
         if (!list_empty(&pos->stDataList))
         {
@@ -908,7 +994,7 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
             {
                 goto EXIT;
             }
-        }        
+        }
     }
 EXIT:
     pthread_mutex_unlock(&stDataMuxCond.mutex);
@@ -1045,7 +1131,7 @@ void Rtsp::LoadDb()
         std::map<std::string, stRtspInputInfo_t>::iterator itMapRtspInfo;
         Sys *pObj = GetInstance(itMapRtspIn->second.stPrev.modKeyString);
         std::string strName;
-        
+
         ASSERT(pObj);
         pObj->GetModDesc(stPreDesc);
         strName = GetIniString(itMapRtspIn->second.curIoKeyString, "STREAM_NAME");
@@ -1258,7 +1344,7 @@ void* Rtsp::OpenStream(char const * szStreamName, void * arg)
     else
     {
         std::map<MI_U32, stRtspDataPackageHead_t>::iterator iter;
-    
+
         pthread_mutex_lock(&stDataMuxCond.mutex);
         iter = mapRtspDataPackage.find(pInfo->uintVideoInPortId);
         if (iter != mapRtspDataPackage.end())
@@ -1317,11 +1403,11 @@ void* Rtsp::OpenAudioStream(char const * szStreamName, void * arg)
         }
         pthread_mutex_unlock(&stDataMuxCond.mutex);
         pThisClass->StartReceiver(pInfo->uintAuidioInPortId);
-    }    
+    }
     else
     {
         std::map<MI_U32, stRtspDataPackageHead_t>::iterator iter;
-    
+
         pthread_mutex_lock(&stDataMuxCond.mutex);
         iter = mapRtspDataPackage.find(pInfo->uintAuidioInPortId);
         if (iter != mapRtspDataPackage.end())
@@ -1534,7 +1620,7 @@ void Rtsp::Start()
         stUserData.pUserData = (void *)&stClientEvent;
         stUserData.u32UserDataSize = sizeof(stRtspClientEvent_t);
         stUserData.u32BufferRealSize = 0;
-        TemSend(itMapRtspOut->first.c_str(), stUserData);        
+        TemSend(itMapRtspOut->first.c_str(), stUserData);
         stClientEvent.pstrUrl = itMapRtspOut->first.c_str();
         stClientEvent.ucharCmd = 1;
         stUserData.pUserData = (void *)&stClientEvent;

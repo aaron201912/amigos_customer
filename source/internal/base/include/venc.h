@@ -24,6 +24,8 @@ typedef struct stVencInfo_s
     int intBitRate;
     int intEncodeType;
     int intEncodeFps;
+    int intMultiSlice;
+    int intSliceRowCnt;
 }stVencInfo_t;
 class Venc: public Sys
 {

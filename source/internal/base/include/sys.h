@@ -121,6 +121,8 @@ typedef struct stYuvInfo_s
 typedef struct stEsPackage_s
 {
     unsigned int uintDataSize;
+    unsigned char bSliceEnd;
+    unsigned int uintEndNalu;
     char *pData;
 }stEsPackage_t;
 

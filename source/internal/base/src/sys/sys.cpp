@@ -1139,6 +1139,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             else
             {
                 Venc *pVencClass = dynamic_cast<Venc*>(pClass);
+                unsigned int uintNalu = -1;
                 memset(&stStream, 0, sizeof(stStream));
                 memset(stPack, 0, sizeof(stPack));
                 stStream.pstPack = stPack;
@@ -1153,34 +1154,18 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                 if(MI_SUCCESS == s32Ret)
                 {
                     stVencInfo_t stVencInfo;
-                    pVencClass->GetInfo(stVencInfo);
-                    switch(stVencInfo.intEncodeType)
-                    {
-                        case E_MI_VENC_MODTYPE_H264E:
-                        {
-                            stStreamInfo.eStreamType =  E_STREAM_H264;
-                        }
-                        break;
-                        case E_MI_VENC_MODTYPE_H265E:
-                        {
-                            stStreamInfo.eStreamType =  E_STREAM_H265;
-                        }
-                        break;
-                        case E_MI_VENC_MODTYPE_JPEGE:
-                        {
-                            stStreamInfo.eStreamType =  E_STREAM_JPEG;
-                        }
-                        break;
-                        default:
-                            stStreamInfo.eStreamType =  E_STREAM_H264;
-                            break;
-                    }
                     stEsPackage_t stEsPacket[16];
+
+                    pVencClass->GetInfo(stVencInfo);
+                    stStreamInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
+                    uintNalu = (stVencInfo.intEncodeType == E_STREAM_H264) ? 0x5353001E : ((stVencInfo.intEncodeType == E_STREAM_H265) ? 0x5353003C : -1);
                     stStreamInfo.stCodecInfo.uintPackCnt = stStream.u32PackCount;
                     for (MI_U8 i = 0; i < stStream.u32PackCount; i++)
                     {
                         stEsPacket[i].uintDataSize = stStream.pstPack[i].u32Len;
                         stEsPacket[i].pData = (char*)stStream.pstPack[i].pu8Addr;
+                        stEsPacket[i].bSliceEnd = stStream.pstPack[i].bFrameEnd;
+                        stEsPacket[i].uintEndNalu = uintNalu;
                     }
                     stStreamInfo.stCodecInfo.pDataAddr = stEsPacket;
                     //printf("Receiver %p Get venc chn %d and send to port %d this is %s\n", pReceiver, stChnOutputPort.u32ChnId, pReceiver->uintPort, pClass->stModDesc.modKeyString.c_str());
@@ -1241,7 +1226,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
         return;
     if (sizeof(stStreamInfo_t) == dataSize)
     {
-        pStreamInfo = (stStreamInfo_t *)pData; 
+        pStreamInfo = (stStreamInfo_t *)pData;
         switch (pStreamInfo->eStreamType)
         {
             case E_STREAM_YUV420:
