@@ -34,11 +34,10 @@ export TARGET_OUT
 export LIBS_PATH
 export DB_3PARTY_PATH
 
-.PHONY: all lib obj clean install depend_internal depend_internal_clean depend_3rd_party $(MODULES) $(MODULES_CLEAN) $(MODULES_APP_ALL) $(MODULES_APP_CLEAN) $(MODULES_OBJS_ALL) $(MODULES_OBJS_CLEAN) $(MODULES_LIBS_ALL) $(MODULES_LIBS_CLEAN)
+.PHONY: all 3rdparty lib obj clean install depend_internal depend_internal_clean depend_3rd_party $(MODULES) $(MODULES_CLEAN) $(MODULES_APP_ALL) $(MODULES_APP_CLEAN) $(MODULES_OBJS_ALL) $(MODULES_OBJS_CLEAN) $(MODULES_LIBS_ALL) $(MODULES_LIBS_CLEAN)
 
 -include $(foreach mod,$(MODULES_IN),$(mod)/dep.mk)
 all:
-	@$(MAKE) MODULES_IN="$(MODULES)" depend_3rd_party
 	@$(MAKE) MODULES_IN="$(MODULES)" depend_internal
 ifneq ($(MODULES_APP_ALL), )
 	@$(MAKE) $(MODULES_APP_ALL)

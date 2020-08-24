@@ -45,4 +45,12 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 				--->msr650使用 
 					./preview RTSP_CLIENT_DIVP_HDMI.ini
 					./preview RTSP_CLIENT_DIVP_DISP_HDMI_4WIN.ini
-				
+		
+		3rdparty代码编译方法：
+			cd amigos_customer/3rdparty
+			git submodule init
+			git submodule update
+			cd amigos_customer/source/
+			make xxx  --->例如编译wpa: 
+				--->wpa 依赖于libnl和openssl，先编译
+				然后再编译wpa：make wpa_supplicant_3rd_party_all
