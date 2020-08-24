@@ -1,6 +1,6 @@
 DB_BUILD_TOP:=$(shell pwd)
 DB_OUT_PATH:=$(DB_BUILD_TOP)/out
-DB_ALKAID_PROJ:=~/203_sdk/project/configs/current.configs
+DB_ALKAID_PROJ:=~/ALKAID/project/configs/current.configs
 DB_3PARTY_PATH:=$(DB_BUILD_TOP)/../3rdparty
 include $(DB_ALKAID_PROJ)
 -include $(MODULE)/$(MODULE).mk
@@ -44,10 +44,12 @@ ifneq ($(MODULES_APP_ALL), )
 	@$(MAKE) $(MODULES_APP_ALL)
 endif
 
+3rdparty:
+	@$(MAKE) MODULES_IN="$(MODULES)" depend_3rd_party
+
 clean:
 	@$(MAKE) $(foreach mod,$(MODULES),$(patsubst %,%_clean,$(mod)))
 	@$(MAKE) MODULES_IN="$(MODULES)" depend_internal_clean
-	@rm -rvf MakefileTmp_*
 	@rm $(DB_OUT_PATH) -rf
 	@rm ./obj/ -rf
 
