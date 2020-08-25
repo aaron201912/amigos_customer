@@ -51,6 +51,13 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 			git submodule init
 			git submodule update
 			cd amigos_customer/source/
+		    根据依赖全部编译：
+		    	make 3rdparty
+		    单独编译某个第三方代码：
 			make xxx  --->例如编译wpa: 
 				--->wpa 依赖于libnl和openssl，先编译
 				然后再编译wpa：make wpa_supplicant_3rd_party_all
+		
+		打包流程：
+			编译完成后输入 make install
+			会在 image/ 下打包成文件夹或者是squashfs
