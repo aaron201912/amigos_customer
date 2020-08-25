@@ -55,7 +55,7 @@ endif
 
 LIBS += -lmi_sys
 
-APP_PREFIX := $(DB_BUILD_TOP)/image/hdmiplayer
+APP_PREFIX := $(DB_IMAGE_PATH)/hdmiplayer
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_HDMI.ini
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_DISP.ini
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_DIVP_HDMI.ini

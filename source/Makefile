@@ -1,7 +1,8 @@
 DB_BUILD_TOP:=$(shell pwd)
 DB_OUT_PATH:=$(DB_BUILD_TOP)/out
-DB_ALKAID_PROJ:=~/p2_sdk/project/configs/current.configs
+DB_ALKAID_PROJ:=~/ALKAID/project/configs/current.configs
 DB_3PARTY_PATH:=$(DB_BUILD_TOP)/../3rdparty
+DB_IMAGE_PATH := $(DB_BUILD_TOP)/image
 include $(DB_ALKAID_PROJ)
 -include $(MODULE)/$(MODULE).mk
 
@@ -28,7 +29,7 @@ MODULES_INSTALL := $(foreach m,$(MODULES),$(m)_install)
 
 export PROJ_ROOT CHIP PRODUCT BOARD TOOLCHAIN TOOLCHAIN_VERSION TOOLCHAIN_REL KERNEL_VERSION CUSTOMER_TAILOR CUSTOMER_OPTIONS MOD_PREFIX INTERFACE_ENABLED INTERFACE_DISABLED MHAL_ENABLED MHAL_DISABLED DUAL_OS CHIP_ALIAS
 export DB_BUILD_TOP
-export DB_OUT_PATH
+export DB_OUT_PATH DB_IMAGE_PATH
 export DB_PROJECT
 export DB_ALKAID_PROJ
 export TARGET_OUT
@@ -86,10 +87,10 @@ endif
 
 module_install:
 ifneq ($(APP_PREFIX), )
-	@$(TOOLCHAIN_REL)strip --strip-unneeded $(DB_OUT_PATH)/app/$(MODULE)
 	@mkdir -p $(APP_PREFIX)/bin/
 	@mkdir -p $(APP_PREFIX)/lib/
 	@cp -vrf $(DB_OUT_PATH)/app/$(MODULE) $(APP_PREFIX)/
+	@$(TOOLCHAIN_REL)strip --strip-unneeded $(APP_PREFIX)/$(MODULE)
 ifneq ($(MODULE_REL_FILES), )
 	$(foreach n,$(MODULE_REL_FILES),cp -rfvd $(n) $(APP_PREFIX)/;)
 endif
@@ -101,6 +102,8 @@ ifneq ($(MODULE_REL_BIN), )
 	$(foreach n,$(MODULE_REL_BIN),cp -rfvd $(n) $(APP_PREFIX)/bin;)
 	@$(TOOLCHAIN_REL)strip --strip-unneeded $(APP_PREFIX)/bin/*
 endif
+	@rm -rfv $(DB_IMAGE_PATH)/$(shell basename $(APP_PREFIX)).sqfs
+	@$(PROJ_ROOT)/image/build/mksquashfs_xz $(APP_PREFIX) $(DB_IMAGE_PATH)/$(shell basename $(APP_PREFIX)).sqfs -comp xz -all-root
 endif
 
 $(3RD_PARTY):
