@@ -1,6 +1,6 @@
 DB_BUILD_TOP:=$(shell pwd)
 DB_OUT_PATH:=$(DB_BUILD_TOP)/out
-DB_ALKAID_PROJ:=~/ALKAID/project/configs/current.configs
+DB_ALKAID_PROJ:=~/203_sdk/project/configs/current.configs
 DB_3PARTY_PATH:=$(DB_BUILD_TOP)/../3rdparty
 DB_IMAGE_PATH := $(DB_BUILD_TOP)/image
 include $(DB_ALKAID_PROJ)
