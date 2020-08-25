@@ -6,4 +6,5 @@ ifneq ($(interface_rgn), disable)
 DEP += rgn
 endif
 
-#3RD_PARTY_DEP += z png jpeg
+3RD_PARTY_REL0 += libnl openssl
+3RD_PARTY_REL1 += wpa_supplicant hostapd dnsmasq wireless_tools

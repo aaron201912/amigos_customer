@@ -9,7 +9,6 @@ endif
 INC  += $(PROJ_ROOT)/kbuild/$(KERNEL_VERSION)/include/uapi/mstar
 INC  += $(PROJ_ROOT)/kbuild/$(KERNEL_VERSION)/drivers/sstar/include
 
-INC  += $(DB_BUILD_TOP)/../$(TARGET_OUT)/internal/common
 LIBS += -lrt -lpthread -lm -ldl
 
 ifeq ($(CHIP), i2)
@@ -25,8 +24,8 @@ CODEDEFINE += -DLINUX_FLOW_ON_DUAL_OS
 endif
 
 -include $(MODULE)/dep.mk
-LIBS := $(foreach m,$(DEP),-l$(m)) $(LIBS)
 INC += $(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))
-INC += $(foreach m,$(3RD_PARTY_DEP),../3rdparty/$(m)/include)
-LIBS += $(foreach m,$(3RD_PARTY_DEP),-l$(m))
-LIBS += $(foreach m,$(3RD_PARTY_DEP),-L../3rdparty/$(m)/lib/$(LINK_TYPE))
+LIBS += $(foreach m,$(DEP),-l$(m))
+INC += $(foreach m,$(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),$(DB_3PARTY_PATH)/$(m)/include)
+LIBS += $(foreach m,$(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),-l$(m))
+LIBS += $(foreach m, $(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),-L$(DB_3PARTY_PATH)/$(m)/lib/$(TOOLCHAIN_VERSION)/$(LINK_TYPE))

@@ -55,5 +55,16 @@ endif
 
 LIBS += -lmi_sys
 
-
-
+APP_PREFIX := $(DB_BUILD_TOP)/image/hdmiplayer
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_HDMI.ini
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_DISP.ini
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_DIVP_HDMI.ini
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_SLOT.ini
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wpa_supplicant.conf
+MODULE_REL_BIN += $(DB_3PARTY_PATH)/wireless_tools/bin/$(TOOLCHAIN_VERSION)/iwlist
+MODULE_REL_BIN += $(DB_3PARTY_PATH)/wpa_supplicant/bin/$(TOOLCHAIN_VERSION)/wpa_supplicant
+MODULE_REL_BIN += $(DB_3PARTY_PATH)/wpa_supplicant/bin/$(TOOLCHAIN_VERSION)/wpa_cli
+MODULE_REL_LIB += $(DB_3PARTY_PATH)/openssl/lib/$(TOOLCHAIN_VERSION)/dynamic/libcrypto.so $(DB_3PARTY_PATH)/openssl/lib/$(TOOLCHAIN_VERSION)/dynamic/libcrypto.so.1.1
+MODULE_REL_LIB += $(DB_3PARTY_PATH)/openssl/lib/$(TOOLCHAIN_VERSION)/dynamic/libssl.so $(DB_3PARTY_PATH)/openssl/lib/$(TOOLCHAIN_VERSION)/dynamic/libssl.so.1.1
+MODULE_REL_LIB += $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/llibnl-3.so $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/libnl-3.so.200 $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/libnl-3.so.200.26.0
+MODULE_REL_LIB += $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/libnl-genl-3.so $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/libnl-genl-3.so.200 $(DB_3PARTY_PATH)/libnl/lib/$(TOOLCHAIN_VERSION)/dynamic/libnl-genl-3.so.200.26.0
