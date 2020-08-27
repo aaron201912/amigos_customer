@@ -704,6 +704,8 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
         case E_STREAM_H264:
         case E_STREAM_H265:
         {
+            unsigned int uintNalu = -1;
+
             for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
             {
                 ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
@@ -715,6 +717,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
             }
             pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
             ASSERT(pstRtspDataPackage->pDataAddr);
+            uintNalu = (pstStream->eStreamType == E_STREAM_H264) ? 0x5353001E : ((pstStream->eStreamType == E_STREAM_H265) ? 0x5353003C : -1);
             for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
             {
                 memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
@@ -725,7 +728,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
 
                     pintHolder = (unsigned int *)((char *)pstRtspDataPackage->pDataAddr + u32Len);
                     *pintHolder++ = 0x01000000;
-                    *pintHolder = pstStream->stCodecInfo.pDataAddr[i].uintEndNalu; //use NAL_UNIT_RESERVED_30 for slice end
+                    *pintHolder = uintNalu;//use NAL_UNIT_RESERVED_30 for slice end
                 }
             }
         }
@@ -1249,11 +1252,11 @@ void Rtsp::Init()
         for (itMapRtspInfo = mRtspInputInfo.begin(); itMapRtspInfo != mRtspInputInfo.end(); ++itMapRtspInfo)
         {
             OpenBufPool(itMapRtspInfo->second.uintVideoInPortId, BUF_POOL_MAX);
-            CreateReceiver(itMapRtspInfo->second.uintVideoInPortId, DataReceiver, NULL, NULL, NULL);
+            CreateReceiver(itMapRtspInfo->second.uintVideoInPortId, DataReceiver, NULL);
             if (itMapRtspInfo->second.intHasPcmData)
             {
                 OpenBufPool(itMapRtspInfo->second.uintAuidioInPortId, BUF_AUDIO_POOL_MAX);
-                CreateReceiver(itMapRtspInfo->second.uintAuidioInPortId, DataReceiver, NULL, NULL, NULL);
+                CreateReceiver(itMapRtspInfo->second.uintAuidioInPortId, DataReceiver, NULL);
             }
         }
         pRTSPServer = new Live555RTSPServer();
@@ -1638,15 +1641,14 @@ int Rtsp::DestroySender(unsigned int outPortId)
 {
     return 0;
 }
-int Rtsp::StartSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc)
+int Rtsp::StartSender(unsigned int outPortId)
 {
     return 0;
 }
-int Rtsp::StopSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc)
+int Rtsp::StopSender(unsigned int outPortId)
 {
     return 0;
 }
-
 void Rtsp::Stop()
 {
     if (mapModOutputInfo.size())

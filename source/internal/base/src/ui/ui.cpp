@@ -228,7 +228,7 @@ void Ui::Start()
     }
     for (itUiIn = mapModInputInfo.begin(); itUiIn != mapModInputInfo.end(); itUiIn++)
     {
-        CreateReceiver(itUiIn->second.curPortId, DataReceiver, NULL, NULL, this);
+        CreateReceiver(itUiIn->second.curPortId, DataReceiver, this);
         StartReceiver(itUiIn->second.curPortId);
     }
 

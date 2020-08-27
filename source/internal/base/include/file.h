@@ -65,9 +65,10 @@ class File: public Sys
 
     protected:
         virtual int CreateSender(unsigned int outPortId);
+        virtual int StopSender(unsigned int outPortId);
+
         static void DataReceiver(void *pData, unsigned int dataSize, void *pUsrData,  unsigned char portId);
     private:
-        static void *SenderState(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData);
         static void *SenderMonitor(ST_TEM_BUFFER stBuf);
 
         unsigned char uConnection;

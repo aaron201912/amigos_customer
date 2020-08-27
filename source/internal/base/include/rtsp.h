@@ -133,8 +133,8 @@ class Rtsp: public Sys
         //Delivery api
         virtual int CreateSender(unsigned int outPortId);
         virtual int DestroySender(unsigned int outPortId);
-        virtual int StartSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc);
-        virtual int StopSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc);
+        virtual int StartSender(unsigned int outPortId);
+        virtual int StopSender(unsigned int outPortId);
 
         static void *ClientMonitor(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData);
         //RTSP client use.

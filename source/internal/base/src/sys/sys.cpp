@@ -317,7 +317,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
         {
             stReceiverPortDesc = srcObj->mapRecevier[srcOutPort].mapPortDesc[dstObj->mapModInputInfo[dstInPort].curIoKeyString];
             pstReceiverPortDesc = &stReceiverPortDesc;
-            printf("Recevier exist!\n");
+            printf("Recevier exist! in port %d recv %p\n", pstReceiverPortDesc->portId, pstReceiverPortDesc->fpRec);
         }
         pthread_mutex_unlock(&srcObj->mapRecevier[srcOutPort].stDeliveryMutex);
         if (stReceiverPortDesc.bStart)
@@ -337,7 +337,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
     if (dstObj->stModDesc.modId > E_SYS_MOD_EXT
         && pstReceiverPortDesc)
     {
-        dstObj->CreateReceiver(dstInPort, pstReceiverPortDesc->fpRec, pstReceiverPortDesc->fpStateStart, pstReceiverPortDesc->fpStateStop, pstReceiverPortDesc->pUsrData);
+        dstObj->CreateReceiver(dstInPort, pstReceiverPortDesc->fpRec, pstReceiverPortDesc->pUsrData);
         if (pstReceiverPortDesc->bStart)
         {
             dstObj->StartReceiver(dstInPort);
@@ -589,7 +589,7 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
 
     if(stPreDesc.modId > E_SYS_MOD_EXT)
     {
-        CreateReceiver(stIn.curPortId, DataReceiver, NULL, NULL, this);
+        CreateReceiver(stIn.curPortId, DataReceiver, this);
         StartReceiver(stIn.curPortId);
     }
     else if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
@@ -676,7 +676,7 @@ int Sys::CreateSender(unsigned int outPortId)
 
     PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
-    stTemAttr.fpThreadDoSignal = SenderState;
+    stTemAttr.fpThreadDoSignal = NULL;
     stTemAttr.fpThreadWaitTimeOut = SenderMonitor;
     stTemAttr.u32ThreadTimeoutMs = 0;
     stTemAttr.bSignalResetTimer = 0;
@@ -688,75 +688,21 @@ int Sys::CreateSender(unsigned int outPortId)
 
     return 0;
 }
-int Sys::StartSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc)
+int Sys::StartSender(unsigned int outPortId)
 {
-    ST_TEM_USER_DATA stUsrData;
-    stSenderState_t stState;
-    stState.eState = E_SENDER_STATE_START;
-    stState.pData = (void *)&stRecvPortDesc;
-
-    stUsrData.pUserData = &stState;
-    stUsrData.u32UserDataSize = sizeof(stSenderState_t);
-    stUsrData.u32BufferRealSize = 0;
-    TemSend(mapModOutputInfo[outPortId].curIoKeyString.c_str(), stUsrData);
-    if (mapRecevier[outPortId].uintRefsCnt == 0)
-    {
-        TemStartMonitor(mapModOutputInfo[outPortId].curIoKeyString.c_str());
-    }
-    mapRecevier[outPortId].uintRefsCnt++;
+    TemStartMonitor(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
     return 0;
 }
-int Sys::StopSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc)
+int Sys::StopSender(unsigned int outPortId)
 {
-    ST_TEM_USER_DATA stUsrData;
-    stSenderState_t stState;
-    stState.eState = E_SENDER_STATE_STOP;
-    stState.pData = (void *)&stRecvPortDesc;
-
-    if (mapRecevier[outPortId].uintRefsCnt)
-        mapRecevier[outPortId].uintRefsCnt--;
-    if (mapRecevier[outPortId].uintRefsCnt == 0)
-    {
-        TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
-    }
-    stUsrData.pUserData = &stState;
-    stUsrData.u32UserDataSize = sizeof(stSenderState_t);
-    stUsrData.u32BufferRealSize = 0;
-    TemSend(mapModOutputInfo[outPortId].curIoKeyString.c_str(), stUsrData);
+    TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
     return 0;
 }
 int Sys::DestroySender(unsigned int outPortId)
 {
     TemClose(mapModOutputInfo[outPortId].curIoKeyString.c_str());
-
-    return 0;
-}
-int Sys::State(unsigned int outPortId, E_SENDER_STATE eState, stReceiverPortDesc_t &stRecPortDesc)
-{
-    pthread_mutex_lock(&mapRecevier[outPortId].stDeliveryMutex);
-    if (stRecPortDesc.bStart)
-    {
-        switch (eState)
-        {
-            case E_SENDER_STATE_START:
-            {
-                if (stRecPortDesc.fpStateStart)
-                    stRecPortDesc.fpStateStart(stRecPortDesc.pUsrData);
-            }
-            break;
-            case E_SENDER_STATE_STOP:
-            {
-                if (stRecPortDesc.fpStateStop)
-                    stRecPortDesc.fpStateStop(stRecPortDesc.pUsrData);
-            }
-            break;
-            default:
-                assert(0);
-        }
-    }
-    pthread_mutex_unlock(&mapRecevier[outPortId].stDeliveryMutex);
 
     return 0;
 }
@@ -828,22 +774,7 @@ int Sys::Disconnect(unsigned int outPortId)
     return 0;
 }
 
-void *Sys::SenderState(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
-{
-    stSenderState_t stSenderState;
-    stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
-    Sys *pClass = pReceiver->pSysClass;
-
-    assert(stUsrData.pUserData);
-    assert(stUsrData.u32UserDataSize == sizeof(stSenderState_t));
-    stSenderState = *((stSenderState_t *)stUsrData.pUserData);
-    assert(stSenderState.pData);
-    pClass->State(pReceiver->uintPort, stSenderState.eState, *((stReceiverPortDesc_t *)stSenderState.pData));
-
-    return NULL;
-}
-
-int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, DeliveryState funcStart, DeliveryState funcStop, void *pUsrData)
+int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, void *pUsrData)
 {
     Sys *pPrevClass = NULL;
     unsigned int intPrevOutPort = 0;
@@ -871,8 +802,6 @@ int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, Delivery
     intPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
     stReceiverPortDesc.bStart = FALSE;
     stReceiverPortDesc.fpRec = funcRecFp;
-    stReceiverPortDesc.fpStateStart = funcStart;
-    stReceiverPortDesc.fpStateStop = funcStop;
     stReceiverPortDesc.pUsrData = pUsrData;
     stReceiverPortDesc.portId = inPortId;
     stReceiverPortDesc.pSysClass = this;
@@ -919,7 +848,11 @@ int Sys::StartReceiver(unsigned int inPortId)
         pthread_mutex_lock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
         pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString].bStart = TRUE;
         pthread_mutex_unlock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
-        pPrevClass->StartSender(intPrevOutPort, pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString]);
+        if (pPrevClass->mapRecevier[intPrevOutPort].uintRefsCnt == 0)
+        {
+            pPrevClass->StartSender(intPrevOutPort);
+        }
+        pPrevClass->mapRecevier[intPrevOutPort].uintRefsCnt++;
     }
     else
     {
@@ -952,13 +885,20 @@ int Sys::StopReceiver(unsigned int inPortId)
     intPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
     if (pPrevClass->mapRecevier.find(intPrevOutPort) != pPrevClass->mapRecevier.end())
     {
-        pPrevClass->StopSender(intPrevOutPort, pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString]);
         pthread_mutex_lock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
         if (pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.find(mapModInputInfo[inPortId].curIoKeyString) != pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc.end())
         {
             pPrevClass->mapRecevier[intPrevOutPort].mapPortDesc[mapModInputInfo[inPortId].curIoKeyString].bStart = FALSE;
         }
         pthread_mutex_unlock(&pPrevClass->mapRecevier[intPrevOutPort].stDeliveryMutex);
+        if (pPrevClass->mapRecevier[intPrevOutPort].uintRefsCnt)
+        {
+            pPrevClass->mapRecevier[intPrevOutPort].uintRefsCnt--;
+        }
+        if (pPrevClass->mapRecevier[intPrevOutPort].uintRefsCnt == 0)
+        {
+            pPrevClass->StopSender(intPrevOutPort);
+        }
     }
     else
     {
@@ -1139,7 +1079,6 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             else
             {
                 Venc *pVencClass = dynamic_cast<Venc*>(pClass);
-                unsigned int uintNalu = -1;
                 memset(&stStream, 0, sizeof(stStream));
                 memset(stPack, 0, sizeof(stPack));
                 stStream.pstPack = stPack;
@@ -1158,14 +1097,12 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
 
                     pVencClass->GetInfo(stVencInfo);
                     stStreamInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
-                    uintNalu = (stVencInfo.intEncodeType == E_STREAM_H264) ? 0x5353001E : ((stVencInfo.intEncodeType == E_STREAM_H265) ? 0x5353003C : -1);
                     stStreamInfo.stCodecInfo.uintPackCnt = stStream.u32PackCount;
                     for (MI_U8 i = 0; i < stStream.u32PackCount; i++)
                     {
                         stEsPacket[i].uintDataSize = stStream.pstPack[i].u32Len;
                         stEsPacket[i].pData = (char*)stStream.pstPack[i].pu8Addr;
                         stEsPacket[i].bSliceEnd = stStream.pstPack[i].bFrameEnd;
-                        stEsPacket[i].uintEndNalu = uintNalu;
                     }
                     stStreamInfo.stCodecInfo.pDataAddr = stEsPacket;
                     //printf("Receiver %p Get venc chn %d and send to port %d this is %s\n", pReceiver, stChnOutputPort.u32ChnId, pReceiver->uintPort, pClass->stModDesc.modKeyString.c_str());
@@ -1194,18 +1131,6 @@ static MI_U64 _GetPts(MI_U32 u32FrameRate)
     return (MI_U64)(1000 / u32FrameRate);
 }
 #endif
-MI_U32 Mif_Syscfg_GetTime0()
-{
-    struct timespec ts;
-    MI_U32 ms;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    ms = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
-    if(ms == 0)
-    {
-        ms = 1;
-    }
-    return ms;
-}
 
 void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsigned char portId)
 {

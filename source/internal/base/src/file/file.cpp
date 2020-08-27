@@ -95,7 +95,7 @@ void File::BindBlock(stModInputInfo_t & stIn)
             perror("open");
             return;
         }
-        CreateReceiver(stIn.curPortId, DataReceiver, NULL, NULL, (void *)it->second.intreadFd);
+        CreateReceiver(stIn.curPortId, DataReceiver, (void *)it->second.intreadFd);
         StartReceiver(stIn.curPortId);
     }
 }
@@ -202,53 +202,12 @@ void File::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
         assert(0);
     }
 }
-
-void *File::SenderState(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
+int File::StopSender(unsigned int outPortId)
 {
-    stSenderState_t stSenderState;
-    stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
-    File *pClass = dynamic_cast<File *>(pReceiver->pSysClass);
+    Disconnect(outPortId);
+    TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
-    assert(stUsrData.pUserData);
-    assert(stUsrData.u32UserDataSize == sizeof(stSenderState_t));
-    stSenderState = *((stSenderState_t *)stUsrData.pUserData);
-    assert(stSenderState.pData);
-    pClass->State(pReceiver->uintPort, stSenderState.eState, *((stReceiverPortDesc_t *)stSenderState.pData));
-
-    if (stSenderState.eState == E_SENDER_STATE_START)
-    {
-        stStreamInfo_t stFileStream;
-
-        memset(&stFileStream, 0, sizeof(stFileStream));
-        stFileStream.eStreamType = (E_STREAM_TYPE)pClass->mapOutputRdFile[pReceiver->uintPort].intFileFmt;
-        switch (stFileStream.eStreamType)
-        {
-            case E_STREAM_H264:
-            case E_STREAM_H265:
-            case E_STREAM_JPEG:
-            {
-                stFileStream.stCodecInfo.streamWidth = pClass->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
-                stFileStream.stCodecInfo.streamHeight = pClass->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
-            }
-            break;
-            case E_STREAM_YUV422:
-            case E_STREAM_YUV420:
-            {
-                stFileStream.stYuvInfo.streamWidth = pClass->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
-                stFileStream.stYuvInfo.streamHeight = pClass->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
-            }
-            break;
-            default:
-                break;
-        }
-        pClass->Connect(pReceiver->uintPort, &stFileStream);
-    }
-    else if (stSenderState.eState == E_SENDER_STATE_STOP)
-    {
-        pClass->Disconnect(pReceiver->uintPort);
-    }
-
-    return NULL;
+    return 0;
 }
 
 int File::CreateSender(unsigned int outPortId)
@@ -258,7 +217,7 @@ int File::CreateSender(unsigned int outPortId)
 
     PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
-    stTemAttr.fpThreadDoSignal = SenderState;
+    stTemAttr.fpThreadDoSignal = NULL;
     stTemAttr.fpThreadWaitTimeOut = SenderMonitor;
     stTemAttr.u32ThreadTimeoutMs = 17;
     stTemAttr.bSignalResetTimer = 0;
@@ -380,6 +339,11 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                 {
                     stFileStream.stYuvInfo.pYdataAddr  = pYdata;
                     stFileStream.stYuvInfo.pUvDataAddr = pUvdata;
+                    if (pSendClass->uConnection == 0)
+                    {
+                        pSendClass->Connect(pReceiver->uintPort, &stFileStream);
+                        pSendClass->uConnection = 1;
+                    }
                     pSendClass->Send(pReceiver->uintPort, &stFileStream, sizeof(stFileStream));
                 }
                 
@@ -397,6 +361,11 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                 if(ret == 1)
                 {
                     stFileStream.stYuvInfo.pYuvDataAddr  = pYuvdata;
+                    if (pSendClass->uConnection == 0)
+                    {
+                        pSendClass->Connect(pReceiver->uintPort, &stFileStream);
+                        pSendClass->uConnection = 1;
+                    }
                     pSendClass->Send(pReceiver->uintPort, &stFileStream, sizeof(stFileStream));
                 }
 
@@ -455,6 +424,7 @@ yuv_free_buf:
 
             stEsPacket[0].uintDataSize = s32Len;
             stEsPacket[0].pData = (char*)pu8Buf;
+            stEsPacket[0].bSliceEnd = 1;
             stFileStream.stCodecInfo.uintPackCnt = 1;
             stFileStream.stCodecInfo.pDataAddr = stEsPacket;
             if (pSendClass->uConnection == 0)

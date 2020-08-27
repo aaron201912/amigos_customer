@@ -122,7 +122,6 @@ typedef struct stEsPackage_s
 {
     unsigned int uintDataSize;
     unsigned char bSliceEnd;
-    unsigned int uintEndNalu;
     char *pData;
 }stEsPackage_t;
 
@@ -183,7 +182,6 @@ typedef struct stModOutputInfo_s
     std::vector<stModIoInfo_t> vectNext;
 }stModOutputInfo_t;
 typedef void (*DeliveryRecFp)(void *, unsigned int, void *, unsigned char);
-typedef void (*DeliveryState)(void *);
 
 typedef enum
 {
@@ -222,8 +220,6 @@ class Sys
             unsigned char portId; //current in port
             unsigned char bStart;
             DeliveryRecFp fpRec;
-            DeliveryState fpStateStart;
-            DeliveryState fpStateStop;
             Sys * pSysClass; //current class
             void *pUsrData;
         }stReceiverPortDesc_t;
@@ -232,7 +228,7 @@ class Sys
             Sys * pSysClass; //prev class
             unsigned int uintPort; //prev out port
             pthread_mutex_t stDeliveryMutex;
-            unsigned int uintRefsCnt; //pre out port bind reference.
+            unsigned int uintRefsCnt;
             std::map<std::string, stReceiverPortDesc_t> mapPortDesc;
         }stReceiverDesc_t;
         class SysAutoLock
@@ -281,15 +277,14 @@ class Sys
         //Delivery api
         virtual int CreateSender(unsigned int outPortId);
         virtual int DestroySender(unsigned int outPortId);
-        virtual int StartSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc);
-        virtual int StopSender(unsigned int outPortId, stReceiverPortDesc_t &stRecvPortDesc);
+        virtual int StartSender(unsigned int outPortId);
+        virtual int StopSender(unsigned int outPortId);
 
          //Delivery internal api
         int Send(unsigned int outPortId, void *pData, unsigned int intDataSize);
         int Connect(unsigned int outPortId, stStreamInfo_t *pInfo);
         int Disconnect(unsigned int outPortId);
-        int State(unsigned int outPortId, E_SENDER_STATE eState, stReceiverPortDesc_t &stRecPortDesc);
-        int CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, DeliveryState funcStart, DeliveryState funcStop, void *pUsrData);
+        int CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, void *pUsrData);
         int DestroyReceiver(unsigned int inPortId);
         int StartReceiver(unsigned int inPortId);
         int StopReceiver(unsigned int inPortId);
@@ -336,7 +331,6 @@ class Sys
 
             return (connectIdMap.find(strModName) != connectIdMap.end()) ? connectIdMap[strModName] : -1;
         }
-        static void *SenderState(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData);
         static void *SenderMonitor(ST_TEM_BUFFER stBuf);
         static void DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsigned char portId);
 
