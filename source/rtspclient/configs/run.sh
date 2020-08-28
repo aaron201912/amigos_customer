@@ -11,9 +11,11 @@ ln -s /dev/urandom /dev/random
 if [ -z $(lsmod |grep ssw101b_wifi_HT40_usb) ];then
 insmod /config/wifi/ssw101b_wifi_HT40_usb.ko
 fi
+sleep 3
 ifconfig wlan0 up
 iwpriv wlan0 fwcmd set_freq,4,2380
+sleep 3
 wpa_supplicant -Dnl80211 -i wlan0 -c ./wpa_supplicant.conf &
 echo "finish connect ap....."
 udhcpc -q -i wlan0 -s /etc/init.d/udhcpc.script
-./rtspclient rtsp://192.168.1.100/main_stream  RTSP_CLIENT_HDMI.ini   1920 1080
+./rtspclient rtsp://192.168.1.101/main_stream  RTSP_CLIENT_HDMI.ini   1920 1080
