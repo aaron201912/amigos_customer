@@ -5,8 +5,8 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 编译方法:
 
 	编译方法：
-		1.先编译ALKAID，修改amigos/source/Makefile中DB_ALKAID_PROJ指定ALKAID project对应current.configs的位置
-		2.进入到amigos/source/
+		1.进入到amigos/source/
+		2.declare -x ALKAID_PATH=xxxx 
 		3.make clean&make 
 		4. 如果ALIAID的project是337de的，则编译的amigos是source端的，如果ALIAID的project是202/203/msr650的，则编译出来的amigos是Sink端的。
 	执行：
