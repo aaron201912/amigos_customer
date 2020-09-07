@@ -8,6 +8,9 @@ mkdir -p /tmp/wifi/run
 chmod 777 /tmp/wifi/run
 rm -f /dev/random
 ln -s /dev/urandom /dev/random
+if [ "`cat /customer/demo.sh | grep drop_frame`" = "" ]; then
+	sed -i '/mi_disp.ko/ s/$/ drop_frame=1/' /customer/demo.sh;
+fi
 if [ -z $(lsmod |grep ssw101b_wifi_HT40_usb) ];then
 insmod /config/wifi/ssw101b_wifi_HT40_usb.ko
 fi
