@@ -9,10 +9,10 @@ include $(DB_ALKAID_PROJ)
 
 MODULES := preview 
 ifeq ($(PRODUCT), nvr)
-MODULES += rtspclient
+MODULES += rtspclient kvm_host
 endif
 ifeq ($(PRODUCT), ipc)
-MODULES += hdmi_convertor
+MODULES += hdmi_convertor kvm_dev
 endif
 
 LIBS_PATH := ../common/ ./internal/
