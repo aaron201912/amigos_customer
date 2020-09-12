@@ -23,8 +23,6 @@ extern "C" {
 #include <errno.h>
 #include <sys/prctl.h>
 
-#include "mi_common.h"
-
 //TEM: Thread event manager writed by Malloc.Peng from SigmaStar
 // Start######
 #define MUTEXCHECK(x) \
@@ -58,13 +56,13 @@ extern "C" {
 typedef struct
 {
 	void *pUserData;
-	MI_U32 u32UserDataSize;
-	MI_U32 u32BufferRealSize;
+	unsigned int u32UserDataSize;
+	unsigned int u32BufferRealSize;
 }ST_TEM_USER_DATA;
 typedef struct
 {
 	void *pTemBuffer;
-	MI_U32 u32TemBufferSize;
+	unsigned int u32TemBufferSize;
 }ST_TEM_BUFFER;
 
 typedef void *(*FP_TEM_DOSIGNAL)(ST_TEM_BUFFER, ST_TEM_USER_DATA);
@@ -72,7 +70,7 @@ typedef void *(*FP_TEM_DOMONITOR)(ST_TEM_BUFFER);
 
 typedef struct{
     pthread_attr_t thread_attr;
-    MI_U32 u32ThreadTimeoutMs;
+    unsigned int u32ThreadTimeoutMs;
     FP_TEM_DOMONITOR fpThreadWaitTimeOut;
     FP_TEM_DOSIGNAL fpThreadDoSignal;
     FP_TEM_DOSIGNAL fpThreadDropEvent;
@@ -81,21 +79,21 @@ typedef struct{
     unsigned int maxDataCout;
     unsigned char bDropData;
     unsigned char bDropEvent;
-    MI_BOOL bSignalResetTimer; // Reset timer after get signal.
+    unsigned char bSignalResetTimer; // Reset timer after get signal.
 }ST_TEM_ATTR;
 
 
-MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr);
-MI_BOOL TemClose(const char* pStr);
-MI_BOOL TemStartMonitor(const char* pStr);
-MI_BOOL TemStartOneShot(const char* pStr);
-MI_BOOL TemConfigTimer(const char* pStr, MI_U32 u32TimeOut, MI_BOOL bSignalResetTimer); //if u32TimeOut is 0, use default setting from TemOpen
-MI_BOOL TemStop(const char* pStr);
-MI_BOOL TemSend(const char* pStr, ST_TEM_USER_DATA stUserData);
-MI_BOOL TemSetBuffer(const char* pStr, void *pBufferData);
-MI_BOOL TemGetBuffer(const char* pStr,  void *pBufferData);
-MI_BOOL TemSetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, MI_U32 u32DataSize);
-MI_BOOL TemGetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, MI_U32 u32DataSize);
+int TemOpen(const char* pStr, ST_TEM_ATTR stAttr);
+int TemClose(const char* pStr);
+int TemStartMonitor(const char* pStr);
+int TemStartOneShot(const char* pStr);
+int TemConfigTimer(const char* pStr, unsigned int u32TimeOut, unsigned char bSignalResetTimer); //if u32TimeOut is 0, use default setting from TemOpen
+int TemStop(const char* pStr);
+int TemSend(const char* pStr, ST_TEM_USER_DATA stUserData);
+int TemSetBuffer(const char* pStr, void *pBufferData);
+int TemGetBuffer(const char* pStr,  void *pBufferData);
+int TemSetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, unsigned int u32DataSize);
+int TemGetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, unsigned int u32DataSize);
 
 #define TEM_GET_PART_BUFFER(name, type, member, value)	\
 	do{		\

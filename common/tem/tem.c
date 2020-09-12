@@ -90,10 +90,10 @@ typedef struct ST_TEM_NODE_s{
 }ST_TEM_NODE;
 
 static pthread_mutex_t m_MutexTem = PTHREAD_MUTEX_INITIALIZER;
-MI_U32 Mif_Syscfg_GetTime0()
+unsigned int _GetTime0()
 {
     struct timespec ts;
-    MI_U32 ms;
+    unsigned int ms;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     ms = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
     if(ms == 0)
@@ -104,14 +104,14 @@ MI_U32 Mif_Syscfg_GetTime0()
 }
 LIST_HEAD(stTemNodeHead); // Tem node, head of ST_TEM_NODE.
 
-static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_TEM_USER_DATA *pstData, pthread_mutex_t *pdata_mutex)
+static unsigned char _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_TEM_USER_DATA *pstData, pthread_mutex_t *pdata_mutex)
 {
     ST_TEM_DATA_NODE *pNode = NULL;
 
     if (pTemNode == NULL)
     {
         ERROR("pTemNode  is NULL!!\n");
-        return FALSE;
+        return -1;
     }
 
     pNode = (ST_TEM_DATA_NODE *)malloc(sizeof(ST_TEM_DATA_NODE));
@@ -157,7 +157,7 @@ static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_T
             pTemNode->intTotalListCnt += 2;
             pthread_mutex_unlock(pdata_mutex);
 
-            return FALSE;
+            return -1;
         }
         if (pTemNode->intTotalListCnt > pTemNode->maxEventCout && pTemNode->bDropEvent)
         {
@@ -181,11 +181,11 @@ static MI_BOOL _TemPushEvent(ST_TEM_NODE *pTemNode, EN_TEM_STATUS enStatus, ST_T
             pTemNode->intTotalListCnt += 2;
             pthread_mutex_unlock(pdata_mutex);
 
-            return FALSE;
+            return -1;
         }
     }
 
-    return TRUE;
+    return 0;
 }
 static EN_TEM_STATUS _TemPopEvent(ST_TEM_NODE *pTemNode, ST_TEM_USER_DATA *pstData, pthread_mutex_t *pdata_mutex)
 {
@@ -229,11 +229,11 @@ static void *_TemThreadMain(void * pArg)
     ST_TEM_NODE *pTempNode = (ST_TEM_NODE *)pArg;
     int intCondWaitRev = 0;
     struct timespec stOuttime;
-    MI_BOOL bRunOneShot = FALSE;
-    MI_U16 u16DropEvent = 0;
-    MI_U32 u32FuncRunTime = 0;
-    MI_BOOL bRun = TRUE;
-    MI_U32 u32TimeOut = 0xFFFFFFFF;
+    unsigned char bRunOneShot = 0;
+    unsigned short u16DropEvent = 0;
+    unsigned int u32FuncRunTime = 0;
+    unsigned char bRun = 1;
+    unsigned int u32TimeOut = 0xFFFFFFFF;
 
     if(pTempNode == NULL)
     {
@@ -245,15 +245,15 @@ static void *_TemThreadMain(void * pArg)
     memset(&stOuttime, 0, sizeof(struct timespec));
     while (1)
     {
-        u32FuncRunTime = Mif_Syscfg_GetTime0();
+        u32FuncRunTime = _GetTime0();
         if ((intCondWaitRev == ETIMEDOUT)  \
                 && pTempNode->pTemAttr->fpThreadWaitTimeOut)
         {
-            if (bRunOneShot == TRUE)
+            if (bRunOneShot)
             {
                 pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
                 u32TimeOut = 0xFFFFFFFF;
-                bRunOneShot = FALSE;
+                bRunOneShot = 0;
             }
             else
             {
@@ -274,7 +274,7 @@ static void *_TemThreadMain(void * pArg)
                 case E_TEM_EXIT:
                     {
                         INFO("Exit thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        bRun = FALSE;
+                        bRun = 0;
                         u32TimeOut = 0;
                     }
                     break;
@@ -293,7 +293,7 @@ static void *_TemThreadMain(void * pArg)
                 case E_TEM_START_ONESHOT:
                     {
                         INFO("Start one shot thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        bRunOneShot = TRUE;
+                        bRunOneShot = 1;
                         u32TimeOut = pTempNode->pTemAttr->u32ThreadTimeoutMs;
                     }
                     break;
@@ -342,12 +342,12 @@ static void *_TemThreadMain(void * pArg)
                     break;
             }
         }
-        if (bRun == FALSE)
+        if (bRun == 0)
         {
             INFO("TEM name [%s]: Bye bye~\n", pTempNode->pThreadName);
             break;
         }
-        u32FuncRunTime = Mif_Syscfg_GetTime0() - u32FuncRunTime;
+        u32FuncRunTime = _GetTime0() - u32FuncRunTime;
         switch (u32TimeOut)
         {
             case 0xFFFFFFFF:
@@ -359,17 +359,17 @@ static void *_TemThreadMain(void * pArg)
             default:
             {
                 struct timespec stCurTime;
-                MI_BOOL bWait = FALSE;
+                unsigned char bWait = 0;
                 clock_gettime(CLOCK_MONOTONIC, &stCurTime);
                 if ((stCurTime.tv_sec > stOuttime.tv_sec) \
-                        ||((stCurTime.tv_sec == stOuttime.tv_sec)?(stCurTime.tv_nsec >= stOuttime.tv_nsec):FALSE) \
+                        ||((stCurTime.tv_sec == stOuttime.tv_sec)?(stCurTime.tv_nsec >= stOuttime.tv_nsec):0) \
                         || pTempNode->pTemAttr->bSignalResetTimer)
                 {
-                    /*         Case TRUE:
+                    /*         Case 1:
                      *                   Reset timer flag  is on.
                      *                   Current time is later than or  equal  the pthread wait time(stOuttime).
                      *                   In this case stOuttime will do stCurTime+u32ThreadTimeoutMs
-                     *          Case FALSE:
+                     *          Case 0:
                      *                   Current time is smaller than the pthread wait time(stOuttime).
                      *                   This case must be get cond signal while waitting time out .
                      *          When first run, and stOuttime is zero and current time is definally larger.
@@ -378,7 +378,7 @@ static void *_TemThreadMain(void * pArg)
                     if (u32FuncRunTime < u32TimeOut)
                     {
                         AddTime(stOuttime, u32TimeOut-u32FuncRunTime);
-                        bWait = TRUE;
+                        bWait = 1;
                     }
                     else if (u32TimeOut != 0)
                     {
@@ -424,7 +424,7 @@ static ST_TEM_NODE *_TemFindNode(const char* pStr)
 
     return pTemp;
 }
-MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
+int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
 {
     ST_TEM_NODE *pTemp = NULL;
     struct list_head *pList = NULL;
@@ -516,7 +516,7 @@ MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
         free(pTemp);
         pTemp = NULL;
 
-        return FALSE;
+        return -1;
     }
     else
     {
@@ -525,9 +525,9 @@ MI_BOOL TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
     MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
 
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemClose(const char* pStr)
+int TemClose(const char* pStr)
 {
     ST_TEM_NODE *pTempNode = NULL;
     void *retval = NULL;
@@ -536,25 +536,13 @@ MI_BOOL TemClose(const char* pStr)
     if(pStr == NULL)
     {
         ERROR("pStr is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
-
-    MUTEXCHECK(pthread_mutex_lock(&m_MutexTem));
-    pList = list_find(&stTemNodeHead, (void *)pStr, _TemFindFp);
-    if (pList != &stTemNodeHead)
+    pTempNode = _TemFindNode(pStr);
+    if (pTempNode == NULL)
     {
-        pTempNode = list_entry(pList, ST_TEM_NODE, stTemNodeList);
-        list_del(&pTempNode->stTemNodeList);
+        return -1;
     }
-    else
-    {
-        ERROR("Not found compaired list: %s\n", pStr);
-        MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
-
-        return FALSE;
-    }
-    MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
-
     ASSERT(pTempNode);
 
     _TemPushEvent(pTempNode, E_TEM_EXIT, NULL, &pTempNode->pTemInfo->data_mutex);
@@ -569,7 +557,11 @@ MI_BOOL TemClose(const char* pStr)
     PTH_RET_CHK(pthread_mutex_destroy(&pTempNode->pTemInfo->mutex));
     PTH_RET_CHK(pthread_condattr_destroy(&pTempNode->pTemInfo->cond_attr));
     PTH_RET_CHK(pthread_cond_destroy(&pTempNode->pTemInfo->cond));
-    
+
+    MUTEXCHECK(pthread_mutex_lock(&m_MutexTem));
+    list_del(&pTempNode->stTemNodeList);
+    MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
+
     free(pTempNode->pTemInfo);
     pTempNode->pTemInfo = NULL;
     
@@ -587,21 +579,21 @@ MI_BOOL TemClose(const char* pStr)
     free(pTempNode);
     pTempNode = NULL;
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemStartMonitor(const char* pStr)
+int TemStartMonitor(const char* pStr)
 {
     ST_TEM_NODE *pTempNode = NULL;
 
     if(pStr == NULL)
     {
         ERROR("pStr is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -617,21 +609,21 @@ MI_BOOL TemStartMonitor(const char* pStr)
         }
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemStartOneShot(const char* pStr)
+int TemStartOneShot(const char* pStr)
 {
     ST_TEM_NODE *pTempNode = NULL;
 
     if(pStr == NULL)
     {
         ERROR("pStr is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -647,20 +639,20 @@ MI_BOOL TemStartOneShot(const char* pStr)
         }
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemConfigTimer(const char* pStr, MI_U32 u32TimeOut, MI_BOOL bSignalResetTimer)
+int TemConfigTimer(const char* pStr, unsigned int u32TimeOut, unsigned char bSignalResetTimer)
 {
     ST_TEM_NODE *pTempNode = NULL;
     if(pStr == NULL)
     {
         ERROR("pStr is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -682,21 +674,21 @@ MI_BOOL TemConfigTimer(const char* pStr, MI_U32 u32TimeOut, MI_BOOL bSignalReset
     }
 
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemStop(const char* pStr)
+int TemStop(const char* pStr)
 {
     ST_TEM_NODE *pTempNode = NULL;
 
     if(pStr == NULL)
     {
         ERROR("pStr is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -712,9 +704,9 @@ MI_BOOL TemStop(const char* pStr)
         }
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemSend(const char* pStr, ST_TEM_USER_DATA stUserData)
+int TemSend(const char* pStr, ST_TEM_USER_DATA stUserData)
 {
     ST_TEM_NODE *pTempNode = NULL;
     void *pDataBuffer = NULL;
@@ -722,12 +714,12 @@ MI_BOOL TemSend(const char* pStr, ST_TEM_USER_DATA stUserData)
     if(pStr == NULL)
     {
         ERROR("pStr or pUserData is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -759,21 +751,21 @@ MI_BOOL TemSend(const char* pStr, ST_TEM_USER_DATA stUserData)
         }
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemSetBuffer(const char* pStr, void *pBufferData)
+int TemSetBuffer(const char* pStr, void *pBufferData)
 {
     ST_TEM_NODE *pTempNode = NULL;
 
     if(pStr == NULL || pBufferData == NULL)
     {
         ERROR("pStr or pBufferData is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -786,21 +778,21 @@ MI_BOOL TemSetBuffer(const char* pStr, void *pBufferData)
         PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemGetBuffer(const char* pStr, void *pBufferData)
+int TemGetBuffer(const char* pStr, void *pBufferData)
 {
     ST_TEM_NODE *pTempNode = NULL;
 
     if(pStr == NULL || pBufferData == NULL)
     {
         ERROR("pStr or pBufferData is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -813,23 +805,23 @@ MI_BOOL TemGetBuffer(const char* pStr, void *pBufferData)
         PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
 
-    return TRUE;
+    return 0;
 }
 
-MI_BOOL TemSetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, MI_U32 u32DataSize)
+int TemSetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, unsigned int u32DataSize)
 {
     ST_TEM_NODE *pTempNode = NULL;
-    MI_U32 u32AddrOffSide = 0;
+    unsigned int u32AddrOffSide = 0;
 
     if(pStr == NULL || pstBufHeadAddr == NULL || pstBufPartAddr == NULL || u32DataSize == 0)
     {
         ERROR("pStr or pBufferData is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -858,22 +850,22 @@ MI_BOOL TemSetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPa
         PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
 
-    return TRUE;
+    return 0;
 }
-MI_BOOL TemGetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, MI_U32 u32DataSize)
+int TemGetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPartAddr, unsigned int u32DataSize)
 {
     ST_TEM_NODE *pTempNode = NULL;
-    MI_U32 u32AddrOffSide = 0;
+    unsigned int u32AddrOffSide = 0;
 
     if(pStr == NULL || pstBufHeadAddr == NULL || pstBufPartAddr == NULL || u32DataSize == 0)
     {
         ERROR("pStr or pBufferData is NULL!!!\n");
-        return FALSE;
+        return -1;
     }
     pTempNode = _TemFindNode(pStr);
     if (pTempNode == NULL)
     {
-        return FALSE;
+        return -1;
     }
     if (pTempNode->pTemInfo->thread == getpid())
     {
@@ -902,7 +894,7 @@ MI_BOOL TemGetPartBufData(const char* pStr, void *pstBufHeadAddr, void *pstBufPa
         PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
 
-    return TRUE;
+    return 0;
 }
 
 //end###################################################
