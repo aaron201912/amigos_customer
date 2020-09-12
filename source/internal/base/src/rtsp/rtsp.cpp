@@ -861,8 +861,6 @@ MI_S32 Rtsp::TermBufPool(void)
     }
 
     return MI_SUCCESS;
-
-    return 0;
 }
 
 void Rtsp::BufPoolEmptyAndWait(void)
