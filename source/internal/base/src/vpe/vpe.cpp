@@ -191,6 +191,8 @@ void Vpe::Init()
         switch (stPad0Info.eIntfMode)
         {
             case E_MI_VIF_MODE_MIPI:
+            case E_MI_VIF_MODE_BT656:
+            case E_MI_VIF_MODE_BT1120_STANDARD:
             {
                 if(stSnrPlane0Info.eBayerId == E_MI_SYS_PIXEL_BAYERID_MAX)
                     stVpeInfo.intInputFmt = (int)stSnrPlane0Info.ePixel;

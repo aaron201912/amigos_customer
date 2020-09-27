@@ -1361,7 +1361,7 @@ void* Rtsp::OpenStream(char const * szStreamName, void * arg)
     {
         pPrevClass->GetModDesc(stPrevModDesc);
         if (stPrevModDesc.modId == E_SYS_MOD_VENC &&
-            (pInfo->intEncodeType == E_MI_VENC_MODTYPE_H265E || pInfo->intEncodeType == E_MI_VENC_MODTYPE_H264E))
+            (pInfo->intEncodeType == E_STREAM_H265 || pInfo->intEncodeType == E_STREAM_H264))
         {
 #ifdef INTERFACE_VENC
             MI_VENC_RequestIdr((MI_VENC_CHN)stPrevModDesc.chnId, FALSE);
@@ -1485,8 +1485,11 @@ int Rtsp::CloseAudioStream(void *handle, void *arg)
 
 void Rtsp::BindBlock(stModInputInfo_t & stIn)
 {
-    //printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    stModDesc_t stPreDesc;
+
+    GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
+    printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
 }
 
@@ -1685,9 +1688,11 @@ void Rtsp::Stop()
 }
 void Rtsp::UnBindBlock(stModInputInfo_t &stIn)
 {
+    stModDesc_t stPreDesc;
 
-    //printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
+    printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 }
 
 void Rtsp::Deinit()

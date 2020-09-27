@@ -29,7 +29,7 @@
 #include "ai.h"
 #include "ao.h"
 #include "slot.h"
-
+#include "snr.h"
 
 void Sys::Implement(std::string &strKey)
 {
@@ -143,6 +143,13 @@ void Sys::Implement(std::string &strKey)
                 SysChild<Slot> Slot(strKey);
             }
             break;
+#if INTERFACE_SENSOR
+            case E_SYS_MOD_SNR:
+            {
+                SysChild<Snr> Snr(strKey);
+            }
+            break;
+#endif
             default:
                 return;
         }
@@ -180,6 +187,7 @@ int main(int argc, char **argv)
     mapModId["AI"] = E_SYS_MOD_AI;
     mapModId["AO"] = E_SYS_MOD_AO;
     mapModId["SLOT"] = E_SYS_MOD_SLOT;
+    mapModId["SNR"] = E_SYS_MOD_SNR;
     Sys::InitSys(argv[1], mapModId);
     do
     {

@@ -12,37 +12,36 @@
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
 
-#ifndef __VIF_H__
-#define __VIF_H__
+#ifndef __SNR_H__
+#define __SNR_H__
 
 #include "sys.h"
 
-typedef struct stVifInfo_s
+typedef struct stSnrInfo_s
 {
     int intSensorId;
+    int intSensorRes;
     int intHdrType;
-    int intWorkMode;
-}stVifInfo_t;
+}stSnrInfo_t;
 
-class Vif: public Sys
+class Snr: public Sys
 {
     public:
-        Vif();
-        virtual ~Vif();
-        void GetInfo(stVifInfo_t &info)
+        Snr();
+        virtual ~Snr();
+        virtual void LoadDb();
+        void GetInfo(stSnrInfo_t &info)
         {
-           info = stVifInfo;
+           info = stSnrInfo;
         }
-        void UpdateInfo(stVifInfo_t &info)
+        void UpdateInfo(stSnrInfo_t &info)
         {
-            stVifInfo = info;
+            stSnrInfo = info;
         };
     private:
-        virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
-        stVifInfo_t stVifInfo;
+        stSnrInfo_t stSnrInfo;
 };
 #endif
-
 

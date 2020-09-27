@@ -92,6 +92,13 @@ typedef enum
     E_STREAM_MAX
 }E_STREAM_TYPE;
 
+typedef enum
+{
+    E_STREAM_OUT_DATA_IN_KERNEL_MODULE,
+    E_STREAM_OUT_DATA_IN_USER_MODULE,
+    E_STREAM_NO_OUT_DATA_MODULE
+}E_SYS_MODULE_TYPE;
+
 typedef struct stSenderState_s
 {
     E_SENDER_STATE eState;
@@ -187,23 +194,24 @@ typedef enum
 {
     E_SYS_MOD_DISP = E_MI_MODULE_ID_DISP,
     E_SYS_MOD_VENC = E_MI_MODULE_ID_VENC,
+    E_SYS_MOD_VDEC = E_MI_MODULE_ID_VDEC,
     E_SYS_MOD_VPE = E_MI_MODULE_ID_VPE,
     E_SYS_MOD_VIF = E_MI_MODULE_ID_VIF,
     E_SYS_MOD_DIVP = E_MI_MODULE_ID_DIVP,
     E_SYS_MOD_VDISP = E_MI_MODULE_ID_VDISP,
-    E_SYS_MOD_VDEC = E_MI_MODULE_ID_VDEC,
     E_SYS_MOD_LDC = E_MI_MODULE_ID_LDC,
     E_SYS_MOD_AI = E_MI_MODULE_ID_AI,
     E_SYS_MOD_AO = E_MI_MODULE_ID_AO,
+    E_SYS_MOD_SNR = E_MI_MODULE_ID_SNR,
     E_SYS_MOD_INT_MAX = E_MI_MODULE_ID_MAX,
     E_SYS_MOD_SIGNAL_MONITOR,
+    E_SYS_MOD_IQ,
     E_SYS_MOD_SLOT,
     E_SYS_MOD_EXT,
     E_SYS_MOD_RTSP,
     E_SYS_MOD_DLA,
     E_SYS_MOD_FDFR,
     E_SYS_MOD_UI,
-    E_SYS_MOD_IQ,
     E_SYS_MOD_FILE,
     E_SYS_MOD_MAX
 }E_SYS_MOD;
@@ -292,6 +300,7 @@ class Sys
         static int GetIniInt(std::string section, std::string key);
         static unsigned int GetIniUnsignedInt(std::string section, std::string key);
         static char *GetIniString(std::string section, std::string key);
+        static std::map<unsigned int, E_SYS_MODULE_TYPE> mapSysModuleType;
 
         std::map<unsigned int, stModInputInfo_t> mapModInputInfo;
         std::map<unsigned int, stModOutputInfo_t> mapModOutputInfo;
@@ -319,6 +328,7 @@ class Sys
         };
         void SetCurInfo(std::string &strKey);
         void BuildModTree();
+        static void SetupModuleType();
         static void CreateConnection();
         static void DestroyConnection();
         static void Implement(std::string &strKey);

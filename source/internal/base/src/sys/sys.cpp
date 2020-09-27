@@ -39,6 +39,7 @@ std::map<std::string, unsigned int> Sys::connectIdMap;
 std::vector<Sys *> Sys::connectOrder;
 dictionary * Sys::m_pstDict = NULL;
 pthread_mutex_t Sys::gstUsrMutex = PTHREAD_MUTEX_INITIALIZER;
+std::map<unsigned int, E_SYS_MODULE_TYPE> Sys::mapSysModuleType;
 
 typedef struct stSys_BindInfo_s
 {
@@ -151,10 +152,12 @@ void Sys::CreateObj(std::string strIniPath, std::map<std::string, unsigned int> 
         m_pstDict = iniparser_load(strIniPath.c_str());
     }
     connectIdMap = mapModId;
+    SetupModuleType();
     CreateConnection();
-    for (i = connectOrder.size(); i != 0; i--)
+    for (i = 0; i < connectOrder.size(); i++)
     {
-        pClass = connectOrder[i - 1];
+        pClass = connectOrder[i];
+        printf("LoadDb: %s\n", pClass->stModDesc.modKeyString.c_str());
         pClass->LoadDb();
     }
     Sys_Init();
@@ -166,6 +169,7 @@ void Sys::DestroyObj()
     Sys_Exit();
     DestroyConnection();
     connectIdMap.clear();
+    mapSysModuleType.clear();
     if (m_pstDict)
     {
         iniparser_freedict(m_pstDict);
@@ -180,9 +184,9 @@ void Sys::Begin(std::map<std::string, Sys *> &maskMap)
     SysAutoLock AutoLock(gstUsrMutex);
 
     //init
-    for (i = connectOrder.size(); i != 0; i--)
+    for (i = 0; i < connectOrder.size(); i++)
     {
-        pClass = connectOrder[i - 1];
+        pClass = connectOrder[i];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             pClass->bExtract = 1;
@@ -193,9 +197,9 @@ void Sys::Begin(std::map<std::string, Sys *> &maskMap)
     }
 
     //bind
-    for (i = connectOrder.size(); i != 0; i--)
+    for (i = 0; i < connectOrder.size(); i++)
     {
-        pClass = connectOrder[i - 1];
+        pClass = connectOrder[i];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             continue;
@@ -211,9 +215,9 @@ void Sys::Begin(std::map<std::string, Sys *> &maskMap)
     }
 
     //start
-    for (i = connectOrder.size(); i != 0; i--)
+    for (i = 0; i < connectOrder.size(); i++)
     {
-        pClass = connectOrder[i - 1];
+        pClass = connectOrder[i];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             continue;
@@ -230,9 +234,9 @@ void Sys::End(std::map<std::string, Sys *> &maskMap)
     SysAutoLock AutoLock(gstUsrMutex);
 
     //stop
-    for (i = 0; i < connectOrder.size(); i++)
+    for (i = connectOrder.size(); i != 0; i--)
     {
-        pClass = connectOrder[i];
+        pClass = connectOrder[i - 1];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             continue;
@@ -241,9 +245,9 @@ void Sys::End(std::map<std::string, Sys *> &maskMap)
     }
 
     //unbind
-    for (i = 0; i < connectOrder.size(); i++)
+    for (i = connectOrder.size(); i != 0; i--)
     {
-        pClass = connectOrder[i];
+        pClass = connectOrder[i - 1];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             continue;
@@ -259,14 +263,15 @@ void Sys::End(std::map<std::string, Sys *> &maskMap)
     }
 
     //deinit
-    for (i = 0; i < connectOrder.size(); i++)
+    for (i = connectOrder.size(); i != 0; i--)
     {
-        pClass = connectOrder[i];
+        pClass = connectOrder[i - 1];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
             continue;
         }
         pClass->Deinit();
+        printf("deinit %s\n", pClass->stModDesc.modKeyString.c_str());
     }
 
 }
@@ -430,6 +435,31 @@ void Sys::Insert(std::vector<Sys *> &objVect)
         Object->bExtract = 0;
     }
 }
+void Sys::SetupModuleType()
+{
+    mapSysModuleType[E_SYS_MOD_DISP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_VDEC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_VPE] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_VIF] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_DIVP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_VDISP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_LDC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_AI] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+    mapSysModuleType[E_SYS_MOD_AO] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
+
+    mapSysModuleType[E_SYS_MOD_DLA] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_FDFR] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_UI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_FILE] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+
+    mapSysModuleType[E_SYS_MOD_SNR] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_SIGNAL_MONITOR] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_IQ] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_SLOT] = E_STREAM_NO_OUT_DATA_MODULE;
+
+}
 void Sys::CreateConnection()
 {
     std::map<unsigned int, std::string>::iterator it;
@@ -551,7 +581,6 @@ void Sys::SetCurInfo(std::string &strKey)
         }
     }
     connectMap[stModDesc.modKeyString] = this;
-    connectOrder.push_back(this);
 
     return;
 }
@@ -573,6 +602,8 @@ void Sys::BuildModTree()
             pPreClass->mapModOutputInfo[itMapInput->second.stPrev.portId].vectNext.push_back(stIoInfo);
         }
     }
+    connectOrder.push_back(this);
+
 }
 void Sys::Start()
 {
@@ -586,16 +617,16 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
     stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
+    printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
-    if(stPreDesc.modId > E_SYS_MOD_EXT)
+    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
     {
         CreateReceiver(stIn.curPortId, DataReceiver, this);
         StartReceiver(stIn.curPortId);
     }
-    else if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
+    else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
-        //printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-        //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
 #ifndef SSTAR_CHIP_I2
         stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
@@ -608,25 +639,25 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
         stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
         stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
         stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
-        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
 #ifndef SSTAR_CHIP_I2
-        if(stPreDesc.modId == E_SYS_MOD_VDEC || stPreDesc.modId == E_SYS_MOD_VDISP)
+        if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
         {
-            if(stModDesc.modId == E_SYS_MOD_VDISP)
-            {
-                stBindInfo.stDstChnPort.u32ChnId = GetIniInt(stIn.curIoKeyString, "CHN");
-            }
-            MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+            stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+            stBindInfo.stDstChnPort.u32PortId = 0;
         }
         else
         {
-            MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+            stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+            stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         }
+        MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+
 #else
-        MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+		stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+		stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+		MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
 #endif
     }
 }
@@ -636,16 +667,16 @@ void Sys::UnBindBlock(stModInputInfo_t &stIn)
     stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
+    printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
-    if(stPreDesc.modId > E_SYS_MOD_EXT)
+    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
     {
         StopReceiver(stIn.curPortId);
         DestroyReceiver(stIn.curPortId);
     }
-    else if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
+    else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
-        //printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-        //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
         stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
         stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
@@ -659,10 +690,19 @@ void Sys::UnBindBlock(stModInputInfo_t &stIn)
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
 #ifndef SSTAR_CHIP_I2
-         if(stModDesc.modId == E_SYS_MOD_VDISP)
-         {
-            stBindInfo.stDstChnPort.u32ChnId = GetIniInt(stIn.curIoKeyString, "CHN");
-         }
+        if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
+        {
+            stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+            stBindInfo.stDstChnPort.u32PortId = 0;
+        }
+        else
+        {
+            stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+            stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+        }
+#else
+        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
 #endif
         MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
     }

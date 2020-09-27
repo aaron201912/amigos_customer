@@ -41,6 +41,9 @@ endif
 ifneq ($(interface_ao), disable)
 SUBDIRS += $(CUR_DIR)/src/ao
 endif
+ifneq ($(interface_sensor), disable)
+SUBDIRS += $(CUR_DIR)/src/snr
+endif
 
 SUBDIRS += $(CUR_DIR)/src/file
 SUBDIRS += $(CUR_DIR)/src/rtsp

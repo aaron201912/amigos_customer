@@ -51,7 +51,7 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
     stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
+    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
 #ifndef SSTAR_CHIP_I2
@@ -70,19 +70,22 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
 #ifndef SSTAR_CHIP_I2
-        if(stPreDesc.modId == E_SYS_MOD_VDEC || stPreDesc.modId == E_SYS_MOD_VDISP)
+        if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
         {
-            if(stModDesc.modId == E_SYS_MOD_VDISP)
-            {
-                stBindInfo.stDstChnPort.u32ChnId = GetIniInt(stIn.curIoKeyString, "CHN");
-            }
+            stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+            stBindInfo.stDstChnPort.u32PortId = 0;
             MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+
         }
         else
         {
+            stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+            stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
             MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
         }
 #else
+        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
 #endif
     }
@@ -97,7 +100,7 @@ void Slot::UnBindBlock(stModInputInfo_t & stIn)
     stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    if (stPreDesc.modId < E_SYS_MOD_INT_MAX)
+    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
         //printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
         //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
@@ -112,12 +115,21 @@ void Slot::UnBindBlock(stModInputInfo_t & stIn)
         stBindInfo.stDstChnPort.u32ChnId = mapSlotInputInfo[stIn.curPortId].uintDstBindChannel;
         stBindInfo.stDstChnPort.u32PortId = mapSlotInputInfo[stIn.curPortId].uintDstBindPort;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
-
-         if(stModDesc.modId == E_SYS_MOD_VDISP)
+#ifndef SSTAR_CHIP_I2
+         if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
          {
-            stBindInfo.stDstChnPort.u32ChnId = GetIniInt(stIn.curIoKeyString, "CHN");
+             stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+             stBindInfo.stDstChnPort.u32PortId = 0;
          }
-
+         else
+         {
+             stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+             stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+         }
+#else
+        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+#endif
         MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
     }
 }
