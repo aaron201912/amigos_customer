@@ -70,6 +70,6 @@ void Ai::Deinit()
 {
     MI_AI_DisableChn((MI_AUDIO_DEV)stModDesc.devId, (MI_AI_CHN)stModDesc.chnId);
     MI_AI_Disable((MI_AUDIO_DEV)stModDesc.devId);
-    //MI_AI_DeInitDev();
+    MI_AI_DeInitDev();
 }
 

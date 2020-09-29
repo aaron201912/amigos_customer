@@ -68,6 +68,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
         printf("Codec type is different need reset to %d\n", eCodecType);
         MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
         MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
+        MI_VDEC_DeInitDev();
         stVdecChnAttr.eCodecType = eCodecType;
         MI_VDEC_CreateChn(stModDesc.chnId, &stVdecChnAttr);
         MI_VDEC_StartChn(stModDesc.chnId);
@@ -94,6 +95,7 @@ void Vdec::Outcoming()
 {
     MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
     MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
+    MI_VDEC_DeInitDev();
 }
 void Vdec::Init()
 {
@@ -110,7 +112,7 @@ void Vdec::Init()
     stVdecChnAttr.u32PicWidth   = stVdecInfo.uintBufWidth;
     stVdecChnAttr.u32PicHeight  = stVdecInfo.uintBufHeight;
     stVdecChnAttr.u32Priority   = 0;
-    stVdecChnAttr.eCodecType = E_MI_VDEC_CODEC_TYPE_H265;
+    stVdecChnAttr.eCodecType = E_MI_VDEC_CODEC_TYPE_H264;
 #ifndef SSTAR_CHIP_I2
     stVdecChnAttr.eDpbBufMode = (MI_VDEC_DPB_BufMode_e)stVdecInfo.dpBufMode;
 #endif
@@ -136,4 +138,7 @@ void Vdec::Init()
 }
 void Vdec::Deinit()
 {
+    MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
+    MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
+    MI_VDEC_DeInitDev();
 }

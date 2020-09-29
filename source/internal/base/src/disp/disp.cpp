@@ -292,6 +292,7 @@ void Disp::Deinit()
         MI_DISP_UnBindVideoLayer(u8LayerId, (MI_DISP_DEV)stModDesc.devId);
     }
     MI_DISP_Disable((MI_DISP_DEV)stModDesc.devId);
+    MI_DISP_DeInitDev();
     if (stDispInfo.intDeviceType == 0)
     {
 #ifdef INTERFACE_PANEL

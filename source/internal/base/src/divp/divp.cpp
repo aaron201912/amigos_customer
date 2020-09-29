@@ -91,4 +91,5 @@ void Divp::Deinit()
     vDivpOutInfo.clear();
     MI_DIVP_StopChn((MI_DIVP_CHN)stModDesc.chnId);
     MI_DIVP_DestroyChn((MI_DIVP_CHN)stModDesc.chnId);
+    MI_DIVP_DeInitDev();
 }

@@ -96,5 +96,8 @@ void Ao::Init()
 }
 void Ao::Deinit()
 {
+    MI_AO_DisableChn((MI_AUDIO_DEV)stModDesc.devId, (MI_AO_CHN)stModDesc.chnId);
+    MI_AO_Disable((MI_AUDIO_DEV)stModDesc.devId);
+    MI_AO_DeInitDev();
 }
 
