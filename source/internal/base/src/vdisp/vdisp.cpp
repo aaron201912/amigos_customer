@@ -37,8 +37,11 @@ void Vdisp::LoadDb()
     for (itMapVdispIn = mapModInputInfo.begin(); itMapVdispIn != mapModInputInfo.end(); itMapVdispIn++)
     {
         memset(&stVdispInputInfo, 0, sizeof(stVdispInputInfo_t));
-        stVdispInputInfo.intPortId = itMapVdispIn->second.curPortId;
-        stVdispInputInfo.intChnId = GetIniInt(itMapVdispIn->second.curIoKeyString, "CHN");
+#ifdef SSTAR_CHIP_I2
+		stVdispInputInfo.intPortId = itMapVdispIn->second.curPortId;
+#else
+		stVdispInputInfo.intChnId = itMapVdispIn->second.curPortId;
+#endif
         stVdispInputInfo.intFreeRun = GetIniInt(itMapVdispIn->second.curIoKeyString, "FREE_RUN");
         stVdispInputInfo.intVdispInX = GetIniInt(itMapVdispIn->second.curIoKeyString, "VDISP_X");
         stVdispInputInfo.intVdispInY = GetIniInt(itMapVdispIn->second.curIoKeyString, "VDISP_Y");
@@ -103,11 +106,12 @@ void Vdisp::Init()
             stInputChnAttr.s32IsFreeRun = FALSE;
         }
 
-        stInputChnAttr.u32OutX = ALIGN16_DOWN(itVdispIn->intVdispInX);
+        stInputChnAttr.u32OutX = itVdispIn->intVdispInX;
         stInputChnAttr.u32OutY = itVdispIn->intVdispInY;
 
         stInputChnAttr.u32OutWidth = itVdispIn->intVdispInWidth;
         stInputChnAttr.u32OutHeight = itVdispIn->intVdispInHeight;
+
         MI_VDISP_SetInputChannelAttr(stModDesc.devId, (MI_VDISP_CHN)itVdispIn->intChnId, &stInputChnAttr);
         MI_VDISP_EnableInputChannel(stModDesc.devId, (MI_VDISP_CHN)itVdispIn->intChnId);
 #endif

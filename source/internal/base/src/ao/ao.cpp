@@ -67,7 +67,7 @@ RESET_AO:
     MI_AO_SetPubAttr((MI_AUDIO_DEV)stModDesc.devId, &stAttr);
     MI_AO_Enable((MI_AUDIO_DEV)stModDesc.devId);
     MI_AO_EnableChn((MI_AUDIO_DEV)stModDesc.devId, (MI_AO_CHN)stModDesc.chnId);
-
+    MI_AO_SetVolume((MI_AUDIO_DEV)stModDesc.devId, intAoDevVolume);
 }
 void Ao::Outcoming()
 {

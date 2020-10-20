@@ -32,9 +32,26 @@ Vif::~Vif()
 }
 void Vif::LoadDb()
 {
+    std::map<unsigned int, stModOutputInfo_t>::iterator itMapOut;
+
     stVifInfo.intHdrType = GetIniInt(stModDesc.modKeyString,"HDR_TYPE");
     stVifInfo.intSensorId = GetIniInt(stModDesc.modKeyString,"SNR_ID");
     stVifInfo.intWorkMode = GetIniInt(stModDesc.modKeyString, "WORK_MOD");
+
+    for(itMapOut = mapModOutputInfo.begin(); itMapOut != mapModOutputInfo.end(); itMapOut++)
+    {
+        mapVifOutInfo[itMapOut->second.curPortId].intIsUseSnrFmt = GetIniInt(itMapOut->second.curIoKeyString, "USE_SNR_FMT", 1);
+        if (!mapVifOutInfo[itMapOut->second.curPortId].intIsUseSnrFmt)
+        {
+            mapVifOutInfo[itMapOut->second.curPortId].intUserFormat = GetIniInt(itMapOut->second.curIoKeyString, "USER_FMT");
+            mapVifOutInfo[itMapOut->second.curPortId].intWidth = GetIniInt(itMapOut->second.curIoKeyString, "VID_W");
+            mapVifOutInfo[itMapOut->second.curPortId].intHeight = GetIniInt(itMapOut->second.curIoKeyString, "VID_H");
+        }
+        else
+        {
+            mapVifOutInfo[itMapOut->second.curPortId].intUserFormat = 0;
+        }
+    }
 }
 void Vif::Init()
 {
@@ -45,7 +62,7 @@ void Vif::Init()
     MI_SYS_PixelFormat_e ePixFormat;
     MI_VIF_DevAttr_t stDevAttr;
     MI_VIF_ChnPortAttr_t stChnPortAttr;
-    MI_SYS_ChnPort_t stChnPort;
+    std::map<unsigned int, stVifOutInfo_t>::iterator itMapVifOut;
 
     memset(&stPad0Info, 0x0, sizeof(MI_SNR_PADInfo_t));
     memset(&stSnrPlane0Info, 0x0, sizeof(MI_SNR_PlaneInfo_t));
@@ -62,6 +79,8 @@ void Vif::Init()
         case E_MI_VIF_MODE_BT656:
         {
             stDevAttr.eClkEdge = stPad0Info.unIntfAttr.stBt656Attr.eClkEdge;
+            stDevAttr.eBitOrder = E_MI_VIF_BITORDER_NORMAL;
+            memcpy(&stDevAttr.stSyncAttr, &stPad0Info.unIntfAttr.stBt656Attr.stSyncAttr, sizeof(MI_VIF_SyncAttr_t));
         }
         break;
         case E_MI_VIF_MODE_MIPI:
@@ -77,29 +96,44 @@ void Vif::Init()
     stDevAttr.eHDRType = (MI_VIF_HDRType_e)stVifInfo.intHdrType;
     MI_VIF_SetDevAttr((MI_VIF_DEV)stModDesc.devId, &stDevAttr);
     MI_VIF_EnableDev((MI_VIF_DEV)stModDesc.devId);
-    if(stSnrPlane0Info.eBayerId == E_MI_SYS_PIXEL_BAYERID_MAX)
+    for(itMapVifOut = mapVifOutInfo.begin(); itMapVifOut != mapVifOutInfo.end(); itMapVifOut++)
     {
-        ePixFormat = (MI_SYS_PixelFormat_e)stSnrPlane0Info.ePixel;
+        stChnPortAttr.stCapRect.u16X = 0;
+        stChnPortAttr.stCapRect.u16Y = 0;
+        if (itMapVifOut->second.intIsUseSnrFmt)
+        {
+            if(stSnrPlane0Info.eBayerId == E_MI_SYS_PIXEL_BAYERID_MAX)
+            {
+                ePixFormat = (MI_SYS_PixelFormat_e)stSnrPlane0Info.ePixel;
+            }
+            else
+            {
+                ePixFormat = (MI_SYS_PixelFormat_e)RGB_BAYER_PIXEL(stSnrPlane0Info.ePixPrecision, stSnrPlane0Info.eBayerId);
+            }
+            stChnPortAttr.stCapRect.u16Width = u32CapWidth;
+            stChnPortAttr.stCapRect.u16Height = u32CapHeight;
+            stChnPortAttr.stDestSize.u16Width = u32CapWidth;
+            stChnPortAttr.stDestSize.u16Height = u32CapHeight;
+        }
+        else
+        {
+            ePixFormat = (MI_SYS_PixelFormat_e)itMapVifOut->second.intUserFormat;
+            stChnPortAttr.stCapRect.u16Width = (MI_U16)((unsigned int)itMapVifOut->second.intWidth < u32CapWidth ? itMapVifOut->second.intWidth : u32CapWidth);
+            stChnPortAttr.stCapRect.u16Height = (MI_U16)((unsigned int)itMapVifOut->second.intHeight < u32CapHeight ? itMapVifOut->second.intHeight : u32CapHeight);
+            stChnPortAttr.stDestSize.u16Width = (MI_U16)((unsigned int)itMapVifOut->second.intWidth < u32CapWidth ? itMapVifOut->second.intWidth : u32CapWidth);
+            stChnPortAttr.stDestSize.u16Height = (MI_U16)(unsigned int)(itMapVifOut->second.intHeight < u32CapHeight ? itMapVifOut->second.intHeight : u32CapHeight);
+        }
+        stChnPortAttr.ePixFormat = ePixFormat;//E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420;
+        stChnPortAttr.eFrameRate = eFrameRate;
+        if(stDevAttr.eIntfMode == E_MI_VIF_MODE_BT656)
+        {
+            stChnPortAttr.eFrameRate = E_MI_VIF_FRAMERATE_FULL;
+            stChnPortAttr.eCapSel = E_MI_SYS_FIELDTYPE_BOTH;
+            stChnPortAttr.eScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+        }
+        MI_VIF_SetChnPortAttr((MI_VIF_CHN)stModDesc.chnId, itMapVifOut->first, &stChnPortAttr);
+        MI_VIF_EnableChnPort((MI_VIF_CHN)stModDesc.chnId, itMapVifOut->first);
     }
-    else
-    {
-        ePixFormat = (MI_SYS_PixelFormat_e)RGB_BAYER_PIXEL(stSnrPlane0Info.ePixPrecision, stSnrPlane0Info.eBayerId);
-    }
-    stChnPortAttr.stCapRect.u16X = 0;
-    stChnPortAttr.stCapRect.u16Y = 0;
-    stChnPortAttr.stCapRect.u16Width = u32CapWidth;
-    stChnPortAttr.stCapRect.u16Height = u32CapHeight;
-    stChnPortAttr.stDestSize.u16Width = u32CapWidth;
-    stChnPortAttr.stDestSize.u16Height = u32CapHeight;
-    stChnPortAttr.ePixFormat = ePixFormat;//E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420;
-    stChnPortAttr.eFrameRate = eFrameRate;
-    MI_VIF_SetChnPortAttr((MI_VIF_CHN)stModDesc.chnId, 0, &stChnPortAttr);
-    memset(&stChnPort, 0x0, sizeof(MI_SYS_ChnPort_t));
-    stChnPort.eModId = E_MI_MODULE_ID_VIF;
-    stChnPort.u32DevId = (MI_VIF_DEV)stModDesc.devId;
-    stChnPort.u32ChnId = (MI_VIF_CHN)stModDesc.chnId;
-    stChnPort.u32PortId = 0;
-    MI_VIF_EnableChnPort((MI_VIF_CHN)stModDesc.chnId, 0);
 }
 void Vif::Deinit()
 {

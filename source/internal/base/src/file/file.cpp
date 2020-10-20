@@ -204,7 +204,11 @@ void File::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
 }
 int File::StopSender(unsigned int outPortId)
 {
-    Disconnect(outPortId);
+    if (uConnection == 1)
+    {
+        Disconnect(outPortId);
+        uConnection = 0;
+    }
     TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
     return 0;
@@ -219,7 +223,7 @@ int File::CreateSender(unsigned int outPortId)
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
     stTemAttr.fpThreadDoSignal = NULL;
     stTemAttr.fpThreadWaitTimeOut = SenderMonitor;
-    stTemAttr.u32ThreadTimeoutMs = 17;
+    stTemAttr.u32ThreadTimeoutMs = 1000 / mapModOutputInfo[outPortId].curFrmRate;
     stTemAttr.bSignalResetTimer = 0;
     stTemAttr.stTemBuf.pTemBuffer = (void *)&(mapRecevier[outPortId]);
     stTemAttr.stTemBuf.u32TemBufferSize = 0;
@@ -394,27 +398,19 @@ yuv_free_buf:
             stFileStream.stCodecInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
             memset(&stEsPacket, 0, sizeof(stEsPacket));
             memset(au8Header, 0, 16);
-            pu8Buf = (MI_U8 *)malloc(NALU_PACKET_SIZE);
-            if(pu8Buf == NULL)
-            {
-                return NULL;
-            }
             //u32Pos = lseek(readfp, 0, SEEK_CUR);
             s32Len = read(readfp, au8Header, 16);
-
             if(s32Len <= 0)
             {
                 lseek(readfp, 0, SEEK_SET);
                 goto codec_free_buf;
             }
-
             u32FrameLen = MI_U32VALUE(au8Header, 4);
-            if(u32FrameLen > NALU_PACKET_SIZE)
+            pu8Buf = (MI_U8 *)malloc(u32FrameLen);
+            if(pu8Buf == NULL)
             {
-                lseek(readfp, 0, SEEK_SET);
-                goto codec_free_buf;
+                return NULL;
             }
-    
             s32Len = read(readfp, pu8Buf, u32FrameLen);
             if(s32Len <= 0)
             {

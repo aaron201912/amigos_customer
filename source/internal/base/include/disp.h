@@ -6,9 +6,10 @@
 
 typedef struct stDispInfo_s
 {
-    int intDeviceType; //0: panel 1: hdmi: 2: vga
+    int intDeviceType; //0: panel 1: hdmi: 2: vga 3: cvbs out
     int intPanelLinkType; //0: mipi 11: ttl
     int intBackGroundColor;
+    int intOutTiming;
 }stDispInfo_t;
 
 typedef struct stDispInputLayerPortInfo_s

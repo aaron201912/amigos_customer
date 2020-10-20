@@ -53,6 +53,7 @@ void Disp::LoadDb()
     stDispInfo.intDeviceType = GetIniInt(stModDesc.modKeyString, "DEV_TYPE");
     stDispInfo.intBackGroundColor = GetIniInt(stModDesc.modKeyString, "BK_COLOR");
     stDispInfo.intPanelLinkType = GetIniInt(stModDesc.modKeyString, "PNL_LINK_TYPE");
+    stDispInfo.intOutTiming = GetIniInt(stModDesc.modKeyString, "DISP_OUT_TIMING", E_MI_DISP_OUTPUT_1080P60);
     intLayerCnt = GetIniInt(stModDesc.modKeyString, "IN_LAYER_CNT");
     printf("DEV_TYPE : %d\n", stDispInfo.intDeviceType);
     printf("BK_COLOR : %d\n", stDispInfo.intBackGroundColor);
@@ -213,17 +214,40 @@ void Disp::Init()
         stAttr.stVideoAttr.bEnableVideo = TRUE;
         stAttr.stVideoAttr.eColorType = E_MI_HDMI_COLOR_TYPE_RGB444;//default color type
         stAttr.stVideoAttr.eDeepColorMode = E_MI_HDMI_DEEP_COLOR_MAX;
-        stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_1080_60P;
+        switch ((MI_DISP_OutputTiming_e)stDispInfo.intOutTiming)
+        {
+            case E_MI_DISP_OUTPUT_720P60:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_720_60P;
+                break;
+            case E_MI_DISP_OUTPUT_1080P60:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_1080_60P;
+                break;
+            case E_MI_DISP_OUTPUT_3840x2160_30:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_4K2K_30P;
+                break;
+            case E_MI_DISP_OUTPUT_3840x2160_60:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_4K2K_60P;
+                break;
+            default:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_1080_60P;
+                break;
+        }
         stAttr.stVideoAttr.eOutputMode = E_MI_HDMI_OUTPUT_MODE_HDMI;
         MI_HDMI_SetAttr(E_MI_HDMI_ID_0, &stAttr);
         MI_HDMI_Start(E_MI_HDMI_ID_0);
         stPubAttr.eIntfType = E_MI_DISP_INTF_HDMI;
-        stPubAttr.u32BgColor = YUYV_BLACK;
-        stPubAttr.eIntfSync = E_MI_DISP_OUTPUT_1080P60;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
 #endif
     }
     else if (stDispInfo.intDeviceType == 2)
     {
+        stPubAttr.eIntfType = E_MI_DISP_INTF_VGA;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
+    }
+    else if (stDispInfo.intDeviceType == 3)
+    {
+        stPubAttr.eIntfType = E_MI_DISP_INTF_CVBS;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
     }
     else
     {

@@ -27,8 +27,8 @@
 #include "iniparser.h"
 
 
-#define MAX_INPUT_CNT    10
-#define MAX_OUTPUT_CNT   10
+#define MAX_INPUT_CNT    64
+#define MAX_OUTPUT_CNT   64
 
 #define MAKE_YUYV_VALUE(y,u,v)  ((y) << 24) | ((u) << 16) | ((y) << 8) | (v)
 #define YUYV_BLACK              MAKE_YUYV_VALUE(0,128,128)
@@ -255,6 +255,7 @@ class Sys
         Sys()
         {
             bExtract = 0;
+            bSenderConnect = 0;
             gstSwitchSrcMutex = PTHREAD_MUTEX_INITIALIZER;
         }
         virtual ~Sys(){}
@@ -297,9 +298,9 @@ class Sys
         int StartReceiver(unsigned int inPortId);
         int StopReceiver(unsigned int inPortId);
         //INI operation
-        static int GetIniInt(std::string section, std::string key);
-        static unsigned int GetIniUnsignedInt(std::string section, std::string key);
-        static char *GetIniString(std::string section, std::string key);
+        static int GetIniInt(std::string section, std::string key, int intDefault = -1);
+        static unsigned int GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault = -1);
+        static char *GetIniString(std::string section, std::string key, char *pDefaultStr = NULL);
         static std::map<unsigned int, E_SYS_MODULE_TYPE> mapSysModuleType;
 
         std::map<unsigned int, stModInputInfo_t> mapModInputInfo;
@@ -350,7 +351,7 @@ class Sys
         static dictionary *m_pstDict;
         static pthread_mutex_t gstUsrMutex;
         unsigned char bExtract;
-
+        unsigned char bSenderConnect;
 };
 
 #endif

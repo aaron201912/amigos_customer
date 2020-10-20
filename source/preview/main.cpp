@@ -158,16 +158,22 @@ void Sys::Implement(std::string &strKey)
 
     return;
 }
+void SelectIni(std::string &strIni, std::map<std::string, unsigned int> &mapModId)
+{
+    Sys::InitSys(strIni, mapModId);
+}
 int main(int argc, char **argv)
 {
     std::map<std::string, unsigned int> mapModId;
     std::map<std::string, Sys *> maskMap;
     std::vector<Sys *> objVect;
-    char getC = 0;
+    std::vector<std::string> vectIniFiles;
+    unsigned int i = 0, sel = 0, isInit = 0;
+    char idx[8];
 
-    if (argc != 2)
+    if (argc < 2)
     {
-        printf("Usage: ./%s xxx_ini_path\n", argv[0]);
+        printf("Usage: ./%s xxx_ini_1 xxx_ini_2\n", argv[0]);
 
         return -1;
     }
@@ -188,13 +194,51 @@ int main(int argc, char **argv)
     mapModId["AO"] = E_SYS_MOD_AO;
     mapModId["SLOT"] = E_SYS_MOD_SLOT;
     mapModId["SNR"] = E_SYS_MOD_SNR;
-    Sys::InitSys(argv[1], mapModId);
+    for (i = 1; i < (unsigned int)argc; i++)
+    {
+        vectIniFiles.push_back(argv[i]);
+    }
     do
     {
+        memset(idx, 0, 8);
+        for (i = 0; i < vectIniFiles.size(); i++)
+        {
+            printf("Press '%d' to run: %s\n", i, vectIniFiles[i].c_str());
+        }
         printf("Press 'q' to exit!\n");
-        getC = getchar();
-    }while (getC != 'q');
-    Sys::DeinitSys();
+        fflush(stdin);
+        scanf("%4s", idx);
+        if (strncmp("q", idx, 1) == 0)
+        {           
+            if (isInit)
+            {
+                Sys::DeinitSys();
+            }
+            break;
+        }
+        if (strncmp("p", idx, 1) == 0)
+        {
+            continue;
+        }
+        sel = atoi(idx);
+        if ( sel < vectIniFiles.size())
+        {
+            
+            if (isInit == 1)
+            {
+                Sys::DeinitSys();
+            }
+            else
+            {
+                isInit = 1;
+            }
+            Sys::InitSys(vectIniFiles[sel], mapModId);
+        }
+        else
+        {
+            printf("Input select %s error!\n", idx);
+        }
+    }while (1);
 
     return 0;
 }

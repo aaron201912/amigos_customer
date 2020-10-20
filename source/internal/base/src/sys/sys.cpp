@@ -31,8 +31,12 @@
 #endif
 
 #include "sys.h"
+#ifdef INTERFACE_VENC
 #include "venc.h"
-
+#endif
+#ifdef INTERFACE_AI
+#include "ai.h"
+#endif
 
 std::map<std::string, Sys *> Sys::connectMap;
 std::map<std::string, unsigned int> Sys::connectIdMap;
@@ -83,7 +87,7 @@ static MI_S32 Sys_Exit(void)
 }
 
 
-int Sys::GetIniInt(std::string section, std::string key)
+int Sys::GetIniInt(std::string section, std::string key, int intDefault)
 {
     std::string strTmp;
 
@@ -95,9 +99,9 @@ int Sys::GetIniInt(std::string section, std::string key)
     strTmp = section + ':' + key;
 
    //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getint(m_pstDict, strTmp.c_str(), -1);
+    return iniparser_getint(m_pstDict, strTmp.c_str(), intDefault);
 }
-unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key)
+unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault)
 {
     std::string strTmp;
 
@@ -109,9 +113,9 @@ unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key)
     strTmp = section + ':' + key;
 
     //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getunsignedint(m_pstDict, strTmp.c_str(), -1);
+    return iniparser_getunsignedint(m_pstDict, strTmp.c_str(), uintDefault);
 }
-char* Sys::GetIniString(std::string section, std::string key)
+char* Sys::GetIniString(std::string section, std::string key, char *pDefaultStr)
 {
     std::string strTmp;
 
@@ -123,7 +127,7 @@ char* Sys::GetIniString(std::string section, std::string key)
     strTmp = section + ':' + key;
 
     //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getstring(m_pstDict, strTmp.c_str(), NULL);
+    return iniparser_getstring(m_pstDict, strTmp.c_str(), pDefaultStr);
 }
 void Sys::InitSys(std::string strIniPath, std::map<std::string, unsigned int> &mapModId)
 {
@@ -150,6 +154,11 @@ void Sys::CreateObj(std::string strIniPath, std::map<std::string, unsigned int> 
     if (!m_pstDict)
     {
         m_pstDict = iniparser_load(strIniPath.c_str());
+        if (!m_pstDict)
+        {
+            printf("INI file: [%s] read error!\n", strIniPath.c_str());
+            return;
+        }
     }
     connectIdMap = mapModId;
     SetupModuleType();
@@ -166,6 +175,10 @@ void Sys::DestroyObj()
 {
     SysAutoLock AutoLock(gstUsrMutex);
 
+    if (!m_pstDict)
+    {
+        return;
+    }
     Sys_Exit();
     DestroyConnection();
     connectIdMap.clear();
@@ -445,7 +458,6 @@ void Sys::SetupModuleType()
     mapSysModuleType[E_SYS_MOD_DIVP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
     mapSysModuleType[E_SYS_MOD_VDISP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
     mapSysModuleType[E_SYS_MOD_LDC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_AI] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
     mapSysModuleType[E_SYS_MOD_AO] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
 
     mapSysModuleType[E_SYS_MOD_DLA] = E_STREAM_OUT_DATA_IN_USER_MODULE;
@@ -453,6 +465,7 @@ void Sys::SetupModuleType()
     mapSysModuleType[E_SYS_MOD_UI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_FILE] = E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_AI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
 
     mapSysModuleType[E_SYS_MOD_SNR] = E_STREAM_NO_OUT_DATA_MODULE;
     mapSysModuleType[E_SYS_MOD_SIGNAL_MONITOR] = E_STREAM_NO_OUT_DATA_MODULE;
@@ -541,15 +554,7 @@ void Sys::SetCurInfo(std::string &strKey)
                 stInputInfo.stPrev.frmRate = GetIniUnsignedInt(strTempString, "FPS");
                 stInputInfo.curPortId = GetIniUnsignedInt(pRes, "PORT");
                 stInputInfo.curFrmRate = GetIniUnsignedInt(pRes, "FPS");
-                if (stInputInfo.curIoKeyString.find("VDISP") != std::string::npos)
-                {
-                    int curChnId =  GetIniUnsignedInt(pRes, "CHN");
-                    mapModInputInfo[curChnId] = stInputInfo;
-                }
-                else
-                {
-                    mapModInputInfo[stInputInfo.curPortId] = stInputInfo;
-                }
+                mapModInputInfo[stInputInfo.curPortId] = stInputInfo;
                 count++;
             }
             if(count == inCnt)
@@ -685,8 +690,6 @@ void Sys::UnBindBlock(stModInputInfo_t &stIn)
         stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
         stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
         stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
-        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
         stBindInfo.u32DstFrmrate = stIn.curFrmRate;
 
 #ifndef SSTAR_CHIP_I2
@@ -736,6 +739,11 @@ int Sys::StartSender(unsigned int outPortId)
 }
 int Sys::StopSender(unsigned int outPortId)
 {
+    if (bSenderConnect == 1)
+    {
+        Disconnect(outPortId);
+        bSenderConnect = 0;
+    }
     TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
     return 0;
@@ -1059,6 +1067,11 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                 {
                     stStreamInfo.stYuvInfo.pYuvDataAddr = (char*)stBufInfo.stFrameData.pVirAddr[0];
                 }
+                if (pClass->bSenderConnect == 0)
+                {
+                    pClass->Connect(pReceiver->uintPort, &stStreamInfo);
+                    pClass->bSenderConnect = 1;
+                }
                 pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
                 MI_SYS_ChnOutputPortPutBuf(hHandle);
             }
@@ -1070,7 +1083,10 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
         {
             MI_AUDIO_Frame_t stFrm;
             MI_AUDIO_AecFrame_t stAecFrm;
+            stAiInfo_t stAiInfo;
+            Ai *pAiClass = dynamic_cast<Ai*>(pClass);
 
+            ASSERT(pAiClass);
             memset(&stFrm, 0, sizeof(MI_AUDIO_Frame_t));
             memset(&stAecFrm, 0, sizeof(MI_AUDIO_AecFrame_t));
             if (MI_SUCCESS == MI_AI_GetFrame((MI_AUDIO_DEV)pClass->stModDesc.devId, (MI_AI_CHN)pClass->stModDesc.chnId, &stFrm, &stAecFrm, 40))
@@ -1084,6 +1100,14 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                 stStreamInfo.stPcmInfo.pData = (char *)stFrm.apVirAddr[0];
                 stStreamInfo.stPcmInfo.uintDataSize = stFrm.u32Len;
 #endif
+                pAiClass->GetInfo(stAiInfo);
+                stStreamInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
+                stStreamInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
+                if (pClass->bSenderConnect == 0)
+                {
+                    pClass->Connect(pReceiver->uintPort, &stStreamInfo);
+                    pClass->bSenderConnect = 1;
+                }
                 pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
                 MI_AI_ReleaseFrame(pClass->stModDesc.devId, pClass->stModDesc.chnId, &stFrm, &stAecFrm);
             }
@@ -1146,6 +1170,11 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                     }
                     stStreamInfo.stCodecInfo.pDataAddr = stEsPacket;
                     //printf("Receiver %p Get venc chn %d and send to port %d this is %s\n", pReceiver, stChnOutputPort.u32ChnId, pReceiver->uintPort, pClass->stModDesc.modKeyString.c_str());
+                    if (pClass->bSenderConnect == 0)
+                    {
+                        pClass->Connect(pReceiver->uintPort, &stStreamInfo);
+                        pClass->bSenderConnect = 1;
+                    }
                     pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
                     MI_VENC_ReleaseStream(stChnOutputPort.u32ChnId, &stStream);
                 }
@@ -1241,6 +1270,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
             break;
             case E_STREAM_H264:
             case E_STREAM_H265:
+            case E_STREAM_JPEG:
             {
 #ifdef INTERFACE_VDEC
                 unsigned int modId = pInstance->stModDesc.modId;

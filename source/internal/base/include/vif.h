@@ -23,25 +23,36 @@ typedef struct stVifInfo_s
     int intHdrType;
     int intWorkMode;
 }stVifInfo_t;
+typedef struct stVifOutInfo_s
+{
+    int intWidth;
+    int intHeight;
+    int intIsUseSnrFmt;
+    int intUserFormat;
+}stVifOutInfo_t;
+
 
 class Vif: public Sys
 {
     public:
         Vif();
         virtual ~Vif();
-        void GetInfo(stVifInfo_t &info)
+        void GetInfo(stVifInfo_t &info, std::map<unsigned int, stVifOutInfo_t> &out)
         {
            info = stVifInfo;
+           out = mapVifOutInfo;
         }
-        void UpdateInfo(stVifInfo_t &info)
+        void UpdateInfo(stVifInfo_t &info, std::map<unsigned int, stVifOutInfo_t> &out)
         {
             stVifInfo = info;
+            mapVifOutInfo = out;
         };
     private:
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
         stVifInfo_t stVifInfo;
+        std::map<unsigned int, stVifOutInfo_t> mapVifOutInfo;
 };
 #endif
 
