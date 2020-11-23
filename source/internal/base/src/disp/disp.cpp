@@ -33,6 +33,17 @@
 
 #include "disp.h"
 
+typedef struct stSys_BindInfo_s
+{
+    MI_SYS_ChnPort_t stSrcChnPort;
+    MI_SYS_ChnPort_t stDstChnPort;
+    MI_U32 u32SrcFrmrate;
+    MI_U32 u32DstFrmrate;
+#ifndef SSTAR_CHIP_I2
+	MI_SYS_BindType_e eBindType;
+    MI_U32 u32BindParam;
+#endif
+} stSys_BindInfo_T;
 
 Disp::Disp()
 {
@@ -55,17 +66,18 @@ void Disp::LoadDb()
     stDispInfo.intPanelLinkType = GetIniInt(stModDesc.modKeyString, "PNL_LINK_TYPE");
     stDispInfo.intOutTiming = GetIniInt(stModDesc.modKeyString, "DISP_OUT_TIMING", E_MI_DISP_OUTPUT_1080P60);
     intLayerCnt = GetIniInt(stModDesc.modKeyString, "IN_LAYER_CNT");
-    printf("DEV_TYPE : %d\n", stDispInfo.intDeviceType);
-    printf("BK_COLOR : %d\n", stDispInfo.intBackGroundColor);
-    printf("PNL_LINK_TYPE : %d\n", stDispInfo.intPanelLinkType);
-    printf("LAYER_CNT : %d\n", intLayerCnt);
+    AMIGOS_INFO("DEV_TYPE : %d\n", stDispInfo.intDeviceType);
+    AMIGOS_INFO("BK_COLOR : %d\n", stDispInfo.intBackGroundColor);
+    AMIGOS_INFO("PNL_LINK_TYPE : %d\n", stDispInfo.intPanelLinkType);
+    AMIGOS_INFO("LAYER_CNT : %d\n", intLayerCnt);
     if (intLayerCnt != -1)
     {
         for (i = 0; i < intLayerCnt; i++)
         {
             snprintf(strLayerName,30, "IN_LAYER_%d", i);
             strLayerKey = GetIniString(stModDesc.modKeyString, strLayerName);
-            printf("layer key %s\n", strLayerKey.c_str());
+            AMIGOS_INFO("layer key %s\n", strLayerKey.c_str());
+            mapLayerInfo[i].uintId = GetIniUnsignedInt(strLayerKey, "LAYER_ID", 0);
             mapLayerInfo[i].uintRot = GetIniUnsignedInt(strLayerKey, "LAYER_ROT");
             mapLayerInfo[i].uintWidth = GetIniUnsignedInt(strLayerKey, "LAYER_WIDTH");
             mapLayerInfo[i].uintHeight = GetIniUnsignedInt(strLayerKey, "LAYER_HEIGHT");
@@ -73,13 +85,13 @@ void Disp::LoadDb()
             mapLayerInfo[i].uintDispHeight = GetIniUnsignedInt(strLayerKey, "LAYER_DISP_HEIGHT");
             mapLayerInfo[i].uintDispXpos = GetIniUnsignedInt(strLayerKey, "LAYER_DISP_XPOS");
             mapLayerInfo[i].uintDispYpos = GetIniUnsignedInt(strLayerKey, "LAYER_DISP_YPOS");
-            printf("Layer %d info : LAYER_ROT %d\n", i, mapLayerInfo[i].uintRot);
-            printf("Layer %d info : LAYER_WIDTH %d\n", i, mapLayerInfo[i].uintWidth);
-            printf("Layer %d info : LAYER_HEIGHT %d\n", i, mapLayerInfo[i].uintHeight);
-            printf("Layer %d info : LAYER_DISP_WIDTH %d\n", i, mapLayerInfo[i].uintDispWidth);
-            printf("Layer %d info : LAYER_DISP_HEIGHT %d\n", i, mapLayerInfo[i].uintDispHeight);
-            printf("Layer %d info : LAYER_DISP_XPOS %d\n", i, mapLayerInfo[i].uintDispXpos);
-            printf("Layer %d info : LAYER_DISP_YPOS %d\n", i, mapLayerInfo[i].uintDispYpos);
+            AMIGOS_INFO("Layer %d info : LAYER_ROT %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintRot);
+            AMIGOS_INFO("Layer %d info : LAYER_WIDTH %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintWidth);
+            AMIGOS_INFO("Layer %d info : LAYER_HEIGHT %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintHeight);
+            AMIGOS_INFO("Layer %d info : LAYER_DISP_WIDTH %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintDispWidth);
+            AMIGOS_INFO("Layer %d info : LAYER_DISP_HEIGHT %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintDispHeight);
+            AMIGOS_INFO("Layer %d info : LAYER_DISP_XPOS %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintDispXpos);
+            AMIGOS_INFO("Layer %d info : LAYER_DISP_YPOS %d\n", mapLayerInfo[i].uintId, mapLayerInfo[i].uintDispYpos);
         }
     }
     for (itMapIn = mapModInputInfo.begin(); itMapIn != mapModInputInfo.end(); ++itMapIn)
@@ -95,16 +107,16 @@ void Disp::LoadDb()
                 mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstHeight = GetIniUnsignedInt(itMapIn->second.curIoKeyString, "DST_HEIGHT");
                 mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstXpos = GetIniUnsignedInt(itMapIn->second.curIoKeyString, "DST_XPOS");
                 mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstYpos = GetIniUnsignedInt(itMapIn->second.curIoKeyString, "DST_YPOS");
-                printf("In Layer %d port %d info : SRC_WIDTH %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintSrcWidth);
-                printf("In Layer %d port %d info : SRC_HEIGHT %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintSrcHeight);
-                printf("In Layer %d port %d info : DST_WIDTH %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstWidth);
-                printf("In Layer %d port %d info : DST_HEIGHT %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstHeight);
-                printf("In Layer %d port %d info : DST_XPOS %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstXpos);
-                printf("In Layer %d port %d info : DST_YPOS %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstYpos);
+                AMIGOS_INFO("In Layer %d port %d info : SRC_WIDTH %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintSrcWidth);
+                AMIGOS_INFO("In Layer %d port %d info : SRC_HEIGHT %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintSrcHeight);
+                AMIGOS_INFO("In Layer %d port %d info : DST_WIDTH %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstWidth);
+                AMIGOS_INFO("In Layer %d port %d info : DST_HEIGHT %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstHeight);
+                AMIGOS_INFO("In Layer %d port %d info : DST_XPOS %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstXpos);
+                AMIGOS_INFO("In Layer %d port %d info : DST_YPOS %d\n", intLayerId, itMapIn->second.curPortId, mapLayerInfo[intLayerId].mapLayerInputPortInfo[itMapIn->second.curPortId].uintDstYpos);
             }
             else
             {
-                printf("Layer did not create, pls check your config.\n");
+                AMIGOS_ERR("Layer did not create, pls check your config.\n");
             }
         }
     }
@@ -115,13 +127,13 @@ static int HdmiCb(MI_HDMI_DeviceId_e eHdmi, MI_HDMI_EventType_e Event, void *pEv
     switch (Event)
     {
         case E_MI_HDMI_EVENT_HOTPLUG:
-            printf("E_MI_HDMI_EVENT_HOTPLUG.\n");
+            AMIGOS_INFO("E_MI_HDMI_EVENT_HOTPLUG.\n");
             break;
         case E_MI_HDMI_EVENT_NO_PLUG:
-            printf("E_MI_HDMI_EVENT_NO_PLUG.\n");
+            AMIGOS_INFO("E_MI_HDMI_EVENT_NO_PLUG.\n");
             break;
         default:
-            printf("Unsupport event.\n");
+            AMIGOS_ERR("Unsupport event.\n");
             break;
     }
 
@@ -216,6 +228,17 @@ void Disp::Init()
         stAttr.stVideoAttr.eDeepColorMode = E_MI_HDMI_DEEP_COLOR_MAX;
         switch ((MI_DISP_OutputTiming_e)stDispInfo.intOutTiming)
         {
+            case E_MI_DISP_OUTPUT_NTSC:
+            case E_MI_DISP_OUTPUT_480P60:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_480_60P;
+                break;
+            case E_MI_DISP_OUTPUT_PAL:
+            case E_MI_DISP_OUTPUT_576P50:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_576_50P;
+                break;
+            case E_MI_DISP_OUTPUT_720P50:
+                stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_720_50P;
+                break;
             case E_MI_DISP_OUTPUT_720P60:
                 stAttr.stVideoAttr.eTimingType = E_MI_HDMI_TIMING_720_60P;
                 break;
@@ -251,7 +274,7 @@ void Disp::Init()
     }
     else
     {
-        printf("Not support current device type!\n");
+        AMIGOS_ERR("Not support current device type!\n");
 
         return;
     }
@@ -263,7 +286,7 @@ void Disp::Init()
     //set inputport
     for (itMapLayerInfo = mapLayerInfo.begin(); itMapLayerInfo != mapLayerInfo.end(); ++itMapLayerInfo)
     {
-        u8LayerId = itMapLayerInfo->first;
+        u8LayerId = itMapLayerInfo->second.uintId;
         //set layer
         MI_DISP_BindVideoLayer((MI_DISP_LAYER)u8LayerId, (MI_DISP_DEV)stModDesc.devId);
         stLayerAttr.ePixFormat = E_MI_SYS_PIXEL_FRAME_YUV_MST_420;
@@ -298,7 +321,71 @@ void Disp::Init()
         }
     }
 }
+void Disp::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
 
+    if (stPreDesc.modId == E_SYS_MOD_DISP)
+    {
+        MI_DISP_DeviceAttach(stPreDesc.devId, stModDesc.devId);
+    }
+    else
+    {
+        memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
+        stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
+        stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+#endif
+		stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+        stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+        stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+        stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+        stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+        stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+        stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+        stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+#ifndef SSTAR_CHIP_I2
+        stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+        stBindInfo.stDstChnPort.u32PortId = 0;
+        MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+#else
+		stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+        MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+#endif
+    }
+}
+void Disp::PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
+
+    if (stPreDesc.modId == E_SYS_MOD_DISP)
+    {
+        MI_DISP_DeviceDetach(stPreDesc.devId, stModDesc.devId);
+    }
+    else
+    {
+        memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
+        stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+        stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+#endif
+		stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+        stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+        stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+        stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+        stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+        stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+#ifndef SSTAR_CHIP_I2
+        stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+        stBindInfo.stDstChnPort.u32PortId = 0;
+#else
+		stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+#endif
+        MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
+    }
+}
 void Disp::Deinit()
 {
     MI_U8 u8LayerId = 0;
@@ -307,7 +394,7 @@ void Disp::Deinit()
 
     for (itMapLayerInfo = mapLayerInfo.begin(); itMapLayerInfo != mapLayerInfo.end(); ++itMapLayerInfo)
     {
-        u8LayerId = itMapLayerInfo->first;
+        u8LayerId = itMapLayerInfo->second.uintId;
         for (itMapLayerInportInfo = itMapLayerInfo->second.mapLayerInputPortInfo.begin(); itMapLayerInportInfo != itMapLayerInfo->second.mapLayerInputPortInfo.end(); ++itMapLayerInportInfo)
         {
             MI_DISP_DisableInputPort(u8LayerId, (MI_DISP_INPUTPORT)itMapLayerInportInfo->first);
@@ -336,7 +423,7 @@ void Disp::Deinit()
     }
     else
     {
-        printf("Not support current device type!\n");
+        AMIGOS_ERR("Not support current device type!\n");
 
         return;
     }

@@ -284,27 +284,27 @@ void Ui::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsign
     MI_U32 u32Color = 0;
     Ui *pInstance = NULL;
 
-    //printf("UI get data size %d\n", dataSize);
+    //AMIGOS_INFO("UI get data size %d\n", dataSize);
     assert(dataSize % sizeof(stFaceInfo_t) == 0);
     pInstance = (Ui *)pUsrData;
     pDlaUiOsdInfo = (std::vector<stUiOsdInfo_t> *)&(pInstance->mapUiInfo[EN_UI_FUNC_SHOW_DLA_RES]);
     pRes = (stFaceInfo_t *)pData;
     intResCnt = dataSize / sizeof(stFaceInfo_t);
-    //printf("Rescnt %d\n", intResCnt);
+    //AMIGOS_INFO("Rescnt %d\n", intResCnt);
 
     for (it = pDlaUiOsdInfo->begin(); it != pDlaUiOsdInfo->end(); ++it)
     {
         if (it->uintFmt != E_MI_RGN_PIXEL_FORMAT_I4)
         {
-            printf("Only support I4!\n");
+            AMIGOS_ERR("Only support I4!\n");
             continue;
         }
         s32Ret = ST_OSD_GetCanvasInfo((MI_RGN_HANDLE)it->uintHandle, &pCanvasInfo);
         if (s32Ret == MI_RGN_OK)
         {
-            //printf("Handler %d\n", it->uintHandle);
-            //printf("W %d\n", it->uintWid);
-            //printf("H %d\n", it->uintHei);
+            //AMIGOS_INFO("Handler %d\n", it->uintHandle);
+            //AMIGOS_INFO("W %d\n", it->uintWid);
+            //AMIGOS_INFO("H %d\n", it->uintHei);
             for (itVectRes = pInstance->vectResultBk.begin(); itVectRes != pInstance->vectResultBk.end(); itVectRes++)
             {
                 nameLen = strlen(itVectRes->faceName);
@@ -337,23 +337,23 @@ void Ui::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsign
                 if (stRectArea.u32X + stRectArea.u16PicW < it->uintWid
                     && stRectArea.u32Y + stRectArea.u16PicH < it->uintHei)
                 {
-                    //printf("cnt %d rect w %d h %d x %d y %d\n", i, stRectArea.u16PicW, stRectArea.u16PicH, stRectArea.u32X, stRectArea.u32Y);
-                    //printf("Name %s\n", pRes[i].faceName);
-                    //printf("Face W %d\n", pRes[i].faceW);
-                    //printf("Face H %d\n", pRes[i].faceH);
-                    //printf("Face X %d\n", pRes[i].xPos);
-                    //printf("Face Y %d\n", pRes[i].yPos);
-                    //printf("window W %d\n", pRes[i].winWid);
-                    //printf("window H %d\n", pRes[i].winHei);
-                    //printf("dst win W %d\n", it->uintWid);
-                    //printf("dst win H %d\n", it->uintHei);
+                    //AMIGOS_INFO("cnt %d rect w %d h %d x %d y %d\n", i, stRectArea.u16PicW, stRectArea.u16PicH, stRectArea.u32X, stRectArea.u32Y);
+                    //AMIGOS_INFO("Name %s\n", pRes[i].faceName);
+                    //AMIGOS_INFO("Face W %d\n", pRes[i].faceW);
+                    //AMIGOS_INFO("Face H %d\n", pRes[i].faceH);
+                    //AMIGOS_INFO("Face X %d\n", pRes[i].xPos);
+                    //AMIGOS_INFO("Face Y %d\n", pRes[i].yPos);
+                    //AMIGOS_INFO("window W %d\n", pRes[i].winWid);
+                    //AMIGOS_INFO("window H %d\n", pRes[i].winHei);
+                    //AMIGOS_INFO("dst win W %d\n", it->uintWid);
+                    //AMIGOS_INFO("dst win H %d\n", it->uintHei);
                     ST_OSD_DrawRectFast((MI_RGN_HANDLE)it->uintHandle, stRectArea, 4, u32Color);
                     if(nameLen && (stRectArea.u32Y > ASCII_HEI)
                         && (it->uintWid > nameLen * ASCII_WID + stRectArea.u32X))
                     {
                         stTextPoint.u32X = stRectArea.u32X;
                         stTextPoint.u32Y = stRectArea.u32Y - ASCII_HEI;
-                        //printf("Draw %s\n", pRes[i].faceName);
+                        //AMIGOS_INFO("Draw %s\n", pRes[i].faceName);
                         ST_OSD_DrawText((MI_RGN_HANDLE)it->uintHandle, stTextPoint, pRes[i].faceName, u32Color, DMF_Font_Size_32x32);
                     }
                 }

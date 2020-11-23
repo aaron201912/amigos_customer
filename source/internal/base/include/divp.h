@@ -46,11 +46,21 @@ class Divp: public Sys
         {
             stDivpInfo = info;
             vDivpOutInfo = out;
+            for (unsigned int i = 0; i < vDivpOutInfo.size(); i++)
+            {
+                if (mapModOutputInfo.find(vDivpOutInfo[i].intPortId) != mapModOutputInfo.end())
+                {
+                    mapModOutputInfo[vDivpOutInfo[i].intPortId].stStreanInfo.eStreamType = (E_STREAM_TYPE)vDivpOutInfo[i].intDivpOutFmt;
+                    mapModOutputInfo[vDivpOutInfo[i].intPortId].stStreanInfo.stFrameInfo.streamWidth = vDivpOutInfo[i].intDivputWidth;
+                    mapModOutputInfo[vDivpOutInfo[i].intPortId].stStreanInfo.stFrameInfo.streamHeight = vDivpOutInfo[i].intDivpOutHeight;
+                }
+            }
         };
     private:
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
+        virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo);
 
         stDivpInfo_t stDivpInfo;
         std::vector<stDivpOutInfo_t> vDivpOutInfo;

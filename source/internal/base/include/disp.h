@@ -23,6 +23,7 @@ typedef struct stDispInputLayerPortInfo_s
 }stDispLayerInputPortInfo_t;
 typedef struct stDispLayerInfo_s
 {
+    unsigned int uintId;
     unsigned int uintRot;
     unsigned int uintWidth;
     unsigned int uintHeight;
@@ -53,6 +54,8 @@ class Disp: public Sys
     private:
         virtual void Init();
         virtual void Deinit();
+        virtual void PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
+        virtual void PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
         virtual void LoadDb();
 
         stDispInfo_t stDispInfo;

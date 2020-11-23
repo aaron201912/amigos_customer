@@ -53,12 +53,22 @@ class Vpe: public Sys
         {
             stVpeInfo = info;
             vVpeOutInfo = out;
+            for (unsigned int i = 0; i < vVpeOutInfo.size(); i++)
+            {
+                if (mapModOutputInfo.find(vVpeOutInfo[i].intPortId) != mapModOutputInfo.end())
+                {
+                    mapModOutputInfo[vVpeOutInfo[i].intPortId].stStreanInfo.eStreamType = (E_STREAM_TYPE)vVpeOutInfo[i].intVpeOutFmt;
+                    mapModOutputInfo[vVpeOutInfo[i].intPortId].stStreanInfo.stFrameInfo.streamWidth = vVpeOutInfo[i].intVpeOutWidth;
+                    mapModOutputInfo[vVpeOutInfo[i].intPortId].stStreanInfo.stFrameInfo.streamHeight = vVpeOutInfo[i].intVpeOutHeight;
+                }
+            }
         };
 
     private:
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
+        virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo);
 
         stVpeInfo_t stVpeInfo;
         std::vector<stVpeOutInfo_t> vVpeOutInfo;

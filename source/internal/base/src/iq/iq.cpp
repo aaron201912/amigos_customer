@@ -75,7 +75,7 @@ int Iq::IspWaitReadyTimeout(int time_ms)
     }
 
     if(delayCnt <= 0){
-        printf("wait isp ready timeout\n");
+        AMIGOS_ERR("wait isp ready timeout\n");
         return -1;
     }
 

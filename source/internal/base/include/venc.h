@@ -39,11 +39,18 @@ class Venc: public Sys
         void UpdateInfo(stVencInfo_t &info)
         {
             stVencInfo = info;
+            if (mapModOutputInfo.find(0) != mapModOutputInfo.end())
+            {
+                mapModOutputInfo[0].stStreanInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
+                mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamWidth = stVencInfo.intWidth;
+                mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamHeight = stVencInfo.intHeight;
+            }
         };
     private:
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
+        virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo);
         stVencInfo_t stVencInfo;
 };
 #endif

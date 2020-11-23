@@ -49,7 +49,7 @@ void Ao::Incoming(stStreamInfo_t *pInfo)
     return;
 
 RESET_AO:
-    printf("Ao attr is different neet to reset!\n");
+    AMIGOS_INFO("Ao attr is different neet to reset!\n");
     MI_AO_DisableChn((MI_AUDIO_DEV)stModDesc.devId, (MI_AO_CHN)stModDesc.chnId);
     MI_AO_Disable((MI_AUDIO_DEV)stModDesc.devId);
     switch (pInfo->stPcmInfo.uintBitLength)

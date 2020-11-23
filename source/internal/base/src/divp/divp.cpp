@@ -43,13 +43,16 @@ void Divp::LoadDb()
     {
         memset(&stDivpOutInfo, 0, sizeof(stDivpOutInfo_t));
         stDivpOutInfo.intDivpOutFmt = GetIniInt(itMapDivpOut->second.curIoKeyString, "VID_FMT");
-        //printf("%s : VID_FMT %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivpOutFmt);
+        //AMIGOS_INFO("%s : VID_FMT %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivpOutFmt);
         stDivpOutInfo.intDivputWidth = GetIniInt(itMapDivpOut->second.curIoKeyString, "VID_W");
-        //printf("%s : VID_W %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivputWidth);
+        //AMIGOS_INFO("%s : VID_W %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivputWidth);
         stDivpOutInfo.intDivpOutHeight = GetIniInt(itMapDivpOut->second.curIoKeyString, "VID_H");
-        //printf("%s : VID_H %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivpOutHeight);
+        //AMIGOS_INFO("%s : VID_H %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivpOutHeight);
         stDivpOutInfo.intPortId = itMapDivpOut->second.curPortId;
         vDivpOutInfo.push_back(stDivpOutInfo);
+        itMapDivpOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stDivpOutInfo.intDivpOutFmt;
+        itMapDivpOut->second.stStreanInfo.stFrameInfo.streamWidth = stDivpOutInfo.intDivputWidth;
+        itMapDivpOut->second.stStreanInfo.stFrameInfo.streamHeight = stDivpOutInfo.intDivpOutHeight;
     }
 }
 void Divp::Init()
@@ -86,9 +89,23 @@ void Divp::Init()
         MI_DIVP_StartChn((MI_DIVP_CHN)stModDesc.chnId);
     }
 }
+void Divp::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
+{
+    std::vector<stDivpOutInfo_t>::iterator itDivpOut;
+
+    for (itDivpOut = vDivpOutInfo.begin(); itDivpOut != vDivpOutInfo.end(); itDivpOut++)
+    {
+        itDivpOut->intDivpOutFmt = pInfo->eStreamType;
+        itDivpOut->intDivputWidth = pInfo->stFrameInfo.streamWidth;
+        itDivpOut->intDivpOutHeight = pInfo->stFrameInfo.streamHeight;
+    }
+    Deinit();
+    Init();
+    AMIGOS_INFO("Divp reset out to w %d h %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType);
+}
+
 void Divp::Deinit()
 {
-    vDivpOutInfo.clear();
     MI_DIVP_StopChn((MI_DIVP_CHN)stModDesc.chnId);
     MI_DIVP_DestroyChn((MI_DIVP_CHN)stModDesc.chnId);
 }

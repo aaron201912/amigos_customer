@@ -31,6 +31,7 @@ typedef struct stVdispInputInfo_s
 
 typedef struct stVdispOutputInfo_s
 {
+    int intPortId;
     int intVdispOutWidth;
     int intVdispOutHeight;
     int intVdispOutPts;
@@ -54,11 +55,22 @@ class Vdisp: public Sys
         {
             vVdispInputInfo = in;
             vVdispOutputInfo = out;
+            for (unsigned int i = 0; i < vVdispOutputInfo.size(); i++)
+            {
+                if (mapModOutputInfo.find(vVdispOutputInfo[i].intPortId) != mapModOutputInfo.end())
+                {
+                    mapModOutputInfo[vVdispOutputInfo[i].intPortId].stStreanInfo.eStreamType = (E_STREAM_TYPE)vVdispOutputInfo[i].intVdispOutFormat;
+                    mapModOutputInfo[vVdispOutputInfo[i].intPortId].stStreanInfo.stFrameInfo.streamWidth = vVdispOutputInfo[i].intVdispOutWidth;
+                    mapModOutputInfo[vVdispOutputInfo[i].intPortId].stStreanInfo.stFrameInfo.streamHeight = vVdispOutputInfo[i].intVdispOutHeight;
+                }
+            }
         };
 
     private:
         virtual void LoadDb();
         virtual void Init();
+        virtual void PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
+        virtual void PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
         virtual void Deinit();
         std::vector<stVdispInputInfo_t> vVdispInputInfo;
         std::vector<stVdispOutputInfo_t> vVdispOutputInfo;

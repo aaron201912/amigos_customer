@@ -53,8 +53,16 @@ class File: public Sys
         }
         void UpdateInfo(std::map<unsigned int, stFileInInfo_t> &in, std::map<unsigned int, stFileOutInfo_t> &out)
         {
+            std::map<unsigned int, stFileOutInfo_t>::iterator itFileOut;
+
             mapInputWrFile = in;
             mapOutputRdFile = out;
+            for (itFileOut = mapOutputRdFile.begin(); itFileOut != mapOutputRdFile.end(); itFileOut++)
+            {
+                mapModOutputInfo[itFileOut->first].stStreanInfo.eStreamType = (E_STREAM_TYPE)itFileOut->second.intFileFmt;
+                mapModOutputInfo[itFileOut->first].stStreanInfo.stFrameInfo.streamWidth = itFileOut->second.intFileOutWidth;
+                mapModOutputInfo[itFileOut->first].stStreanInfo.stFrameInfo.streamHeight = itFileOut->second.intFileOutHeight;
+            }
         };
     private:
         virtual void LoadDb();

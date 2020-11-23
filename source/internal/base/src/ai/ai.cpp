@@ -51,7 +51,7 @@ void Ai::Init()
     stAiPubAttr.WorkModeSetting.stI2sConfig.bSyncClock = TRUE;
     stAiPubAttr.WorkModeSetting.stI2sConfig.eFmt = E_MI_AUDIO_I2S_FMT_I2S_MSB;
     stAiPubAttr.WorkModeSetting.stI2sConfig.eMclk = E_MI_AUDIO_I2S_MCLK_0;
-    /*printf("Audio sample rate %d, bit width %d, work mode %d, snd mode %d, chn %d\n",
+    /*AMIGOS_INFO("Audio sample rate %d, bit width %d, work mode %d, snd mode %d, chn %d\n",
             stAiInfo.uintSampleRate, stAiInfo.uintBitWidth, stAiInfo.uintWorkMode,
             stAiInfo.uintSoundMode, stAiInfo.uintChannelCnt);*/
     MI_AI_SetPubAttr((MI_AUDIO_DEV)stModDesc.devId, &stAiPubAttr);
@@ -65,6 +65,10 @@ void Ai::Init()
     stChnOutputPort.u32ChnId = stModDesc.chnId;
     stChnOutputPort.u32PortId = 0;
     MI_SYS_SetChnOutputPortDepth(&stChnOutputPort, 8, 8);
+    mapModOutputInfo[0].stStreanInfo.eStreamType = E_STREAM_PCM;
+    mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
+    mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
+    mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintChannelCnt = stAiInfo.uintChannelCnt;
 }
 void Ai::Deinit()
 {

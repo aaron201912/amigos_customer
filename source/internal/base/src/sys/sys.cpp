@@ -65,10 +65,10 @@ static MI_S32 Sys_Init(void)
 
     memset(&stVersion, 0x0, sizeof(MI_SYS_Version_t));
     STCHECKRESULT(MI_SYS_GetVersion(&stVersion));
-    printf("u8Version:%s\n", stVersion.u8Version);
+    AMIGOS_INFO("u8Version:%s\n", stVersion.u8Version);
 
     STCHECKRESULT(MI_SYS_GetCurPts(&u64Pts));
-    printf("u64Pts:0x%llx\n", u64Pts);
+    AMIGOS_INFO("u64Pts:0x%llx\n", u64Pts);
 
     u64Pts = 0xF1237890F1237890;
     STCHECKRESULT(MI_SYS_InitPtsBase(u64Pts));
@@ -93,12 +93,12 @@ int Sys::GetIniInt(std::string section, std::string key, int intDefault)
 
     if (!m_pstDict)
     {
-        printf("INI file not found!\n");
+        AMIGOS_ERR("INI file not found!\n");
         assert(NULL);
     }
     strTmp = section + ':' + key;
 
-   //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
+   //AMIGOS_INFO("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
     return iniparser_getint(m_pstDict, strTmp.c_str(), intDefault);
 }
 unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault)
@@ -107,7 +107,7 @@ unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key, unsign
 
     if (!m_pstDict)
     {
-        printf("INI file not found!\n");
+        AMIGOS_ERR("INI file not found!\n");
         assert(NULL);
     }
     strTmp = section + ':' + key;
@@ -121,7 +121,7 @@ char* Sys::GetIniString(std::string section, std::string key, char *pDefaultStr)
 
     if (!m_pstDict)
     {
-        printf("INI file not found!\n");
+        AMIGOS_ERR("INI file not found!\n");
         assert(NULL);
     }
     strTmp = section + ':' + key;
@@ -156,7 +156,7 @@ void Sys::CreateObj(std::string strIniPath, std::map<std::string, unsigned int> 
         m_pstDict = iniparser_load(strIniPath.c_str());
         if (!m_pstDict)
         {
-            printf("INI file: [%s] read error!\n", strIniPath.c_str());
+            AMIGOS_ERR("INI file: [%s] read error!\n", strIniPath.c_str());
             return;
         }
     }
@@ -166,7 +166,7 @@ void Sys::CreateObj(std::string strIniPath, std::map<std::string, unsigned int> 
     for (i = 0; i < connectOrder.size(); i++)
     {
         pClass = connectOrder[i];
-        printf("LoadDb: %s\n", pClass->stModDesc.modKeyString.c_str());
+        AMIGOS_INFO("LoadDb: %s\n", pClass->stModDesc.modKeyString.c_str());
         pClass->LoadDb();
     }
     Sys_Init();
@@ -193,6 +193,7 @@ void Sys::Begin(std::map<std::string, Sys *> &maskMap)
 {
     unsigned int i = 0;
     Sys *pClass = NULL;
+    std::map<unsigned int, stModOutputInfo_t>::iterator itMapOut;
     std::map<unsigned int, stModInputInfo_t>::iterator itMapIn;
     SysAutoLock AutoLock(gstUsrMutex);
 
@@ -202,10 +203,9 @@ void Sys::Begin(std::map<std::string, Sys *> &maskMap)
         pClass = connectOrder[i];
         if (maskMap.find(pClass->stModDesc.modKeyString) != maskMap.end())
         {
-            pClass->bExtract = 1;
             continue;
         }
-        printf("init %s\n", pClass->stModDesc.modKeyString.c_str());
+        AMIGOS_INFO("init %s\n", pClass->stModDesc.modKeyString.c_str());
         pClass->Init();
     }
 
@@ -284,7 +284,7 @@ void Sys::End(std::map<std::string, Sys *> &maskMap)
             continue;
         }
         pClass->Deinit();
-        printf("deinit %s\n", pClass->stModDesc.modKeyString.c_str());
+        AMIGOS_INFO("deinit %s\n", pClass->stModDesc.modKeyString.c_str());
     }
 
 }
@@ -302,13 +302,13 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
 
     if (dstObj->mapModInputInfo.find(dstInPort) == dstObj->mapModInputInfo.end())
     {
-        printf("Dst in port not found !\n");
+        AMIGOS_ERR("Dst in port not found !\n");
 
         return;
     }
     if (srcObj->mapModOutputInfo.find(srcOutPort) == srcObj->mapModOutputInfo.end())
     {
-        printf("Src out port not found !\n");
+        AMIGOS_ERR("Src out port not found !\n");
 
         return;
     }
@@ -322,7 +322,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
     }
     if (i == srcObj->mapModOutputInfo[srcOutPort].vectNext.size())
     {
-        printf("Not found connection!\n");
+        AMIGOS_ERR("Not found connection!\n");
         return;
     }
     dstObj->UnBindBlock(dstObj->mapModInputInfo[dstInPort]);
@@ -335,7 +335,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
         {
             stReceiverPortDesc = srcObj->mapRecevier[srcOutPort].mapPortDesc[dstObj->mapModInputInfo[dstInPort].curIoKeyString];
             pstReceiverPortDesc = &stReceiverPortDesc;
-            printf("Recevier exist! in port %d recv %p\n", pstReceiverPortDesc->portId, pstReceiverPortDesc->fpRec);
+            AMIGOS_INFO("Recevier exist! in port %d recv %p\n", pstReceiverPortDesc->portId, pstReceiverPortDesc->fpRec);
         }
         pthread_mutex_unlock(&srcObj->mapRecevier[srcOutPort].stDeliveryMutex);
         if (stReceiverPortDesc.bStart)
@@ -380,12 +380,6 @@ void Sys::Extract(std::vector<Sys *> &objVect)
     }
     for (i = objVect.size(); i != 0; i--)
     {
-        Object = objVect[i - 1];
-        Object->Deinit();
-        Object->bExtract = 1;
-    }
-    for (i = objVect.size(); i != 0; i--)
-    {
 
         Object = objVect[i - 1];
         if (i == objVect.size())
@@ -403,6 +397,11 @@ void Sys::Extract(std::vector<Sys *> &objVect)
         {
             Object->UnBindBlock(itMapIn->second);
         }
+    }
+    for (i = objVect.size(); i != 0; i--)
+    {
+        Object = objVect[i - 1];
+        Object->Deinit();
     }
 
 }
@@ -445,7 +444,6 @@ void Sys::Insert(std::vector<Sys *> &objVect)
     {
         Object = *itObjVect;
         Object->Start();
-        Object->bExtract = 0;
     }
 }
 void Sys::SetupModuleType()
@@ -466,12 +464,16 @@ void Sys::SetupModuleType()
     mapSysModuleType[E_SYS_MOD_FILE] = E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_AI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_RTSP] = E_STREAM_OUT_DATA_IN_USER_MODULE;
 
+#ifndef SSTAR_CHIP_I2
     mapSysModuleType[E_SYS_MOD_SNR] = E_STREAM_NO_OUT_DATA_MODULE;
+#endif
     mapSysModuleType[E_SYS_MOD_SIGNAL_MONITOR] = E_STREAM_NO_OUT_DATA_MODULE;
     mapSysModuleType[E_SYS_MOD_IQ] = E_STREAM_NO_OUT_DATA_MODULE;
     mapSysModuleType[E_SYS_MOD_SLOT] = E_STREAM_NO_OUT_DATA_MODULE;
-
+    mapSysModuleType[E_SYS_MOD_UAC] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_UVC] = E_STREAM_NO_OUT_DATA_MODULE;
 }
 void Sys::CreateConnection()
 {
@@ -482,13 +484,13 @@ void Sys::CreateConnection()
     std::string rootName;
     int i = 0;
 
-    printf("%d\n",iniparser_getint(m_pstDict, "ROOT:COUNT", -1));
+    AMIGOS_INFO("%d\n",iniparser_getint(m_pstDict, "ROOT:COUNT", -1));
     rootCnt = iniparser_getint(m_pstDict, "ROOT:COUNT", -1);
     for(i = 0; i < rootCnt; i++)
     {
         sprintf(root,"ROOT:NAME_%d",i);
         rootName = iniparser_getstring(m_pstDict, root, NULL);
-        printf("root %s\n",rootName.c_str());
+        AMIGOS_INFO("root %s\n",rootName.c_str());
         mapRootKeyStr[i] = rootName;
     }
     for (it = mapRootKeyStr.begin(); it != mapRootKeyStr.end(); ++it)
@@ -616,98 +618,91 @@ void Sys::Start()
 void Sys::Stop()
 {
 }
+void Sys::PrevExtBind(stModInputInfo_t & stIn)
+{
+    CreateReceiver(stIn.curPortId, DataReceiver, this);
+    StartReceiver(stIn.curPortId);
+}
+void Sys::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
+
+    memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
+    stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
+    stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+#endif
+    stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+    stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+    stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+    stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+    stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+    stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+    stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+    stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+    stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+    stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+#ifndef SSTAR_CHIP_I2
+	MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+#else
+	MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+#endif
+}
+void Sys::PrevExtUnBind(stModInputInfo_t & stIn)
+{
+    StopReceiver(stIn.curPortId);
+    DestroyReceiver(stIn.curPortId);
+}
+void Sys::PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
+
+    memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+    stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+    stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+    stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+    stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+    stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+    stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+    stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+    stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+    stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+    stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+    MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
+}
+
 void Sys::BindBlock(stModInputInfo_t &stIn)
 {
     stModDesc_t stPreDesc;
-    stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    AMIGOS_INFO("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
     if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
     {
-        CreateReceiver(stIn.curPortId, DataReceiver, this);
-        StartReceiver(stIn.curPortId);
+        PrevExtBind(stIn);
     }
     else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
-        memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
-#ifndef SSTAR_CHIP_I2
-        stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
-        stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
-#endif
-        stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
-        stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
-        stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
-        stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
-        stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
-        stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
-        stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
-        stBindInfo.u32DstFrmrate = stIn.curFrmRate;
-
-#ifndef SSTAR_CHIP_I2
-        if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
-        {
-            stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
-            stBindInfo.stDstChnPort.u32PortId = 0;
-        }
-        else
-        {
-            stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-            stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
-        }
-        MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
-
-#else
-		stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-		stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
-		MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
-#endif
+        PrevIntBind(stIn, stPreDesc);
     }
 }
 void Sys::UnBindBlock(stModInputInfo_t &stIn)
 {
     stModDesc_t stPreDesc;
-    stSys_BindInfo_T stBindInfo;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    AMIGOS_INFO("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
     if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
     {
-        StopReceiver(stIn.curPortId);
-        DestroyReceiver(stIn.curPortId);
+        PrevExtUnBind(stIn);
     }
     else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
-        memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
-        stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
-        stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
-        stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
-        stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
-        stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
-        stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
-        stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
-        stBindInfo.u32DstFrmrate = stIn.curFrmRate;
-
-#ifndef SSTAR_CHIP_I2
-        if (stModDesc.modId == E_SYS_MOD_VDISP || stModDesc.modId == E_SYS_MOD_DISP)
-        {
-            stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
-            stBindInfo.stDstChnPort.u32PortId = 0;
-        }
-        else
-        {
-            stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-            stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
-        }
-#else
-        stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
-        stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
-#endif
-        MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
+        PrevIntUnBind(stIn, stPreDesc);
     }
 }
 
@@ -739,10 +734,11 @@ int Sys::StartSender(unsigned int outPortId)
 }
 int Sys::StopSender(unsigned int outPortId)
 {
-    if (bSenderConnect == 1)
+    ASSERT(mapModOutputInfo.find(outPortId) != mapModOutputInfo.end());
+    if (mapModOutputInfo[outPortId].bSenderConnect == 1)
     {
         Disconnect(outPortId);
-        bSenderConnect = 0;
+        mapModOutputInfo[outPortId].bSenderConnect = 0;
     }
     TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
 
@@ -831,19 +827,19 @@ int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, void *pU
 
     if (!funcRecFp)
     {
-        printf("funcRecFp is null!\n");
+        AMIGOS_ERR("funcRecFp is null!\n");
 
         return -1;
     }
     if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
     {
-        printf("Can not find input port %d\n", inPortId);
+        AMIGOS_ERR("Can not find input port %d\n", inPortId);
         return -1;
     }
     pPrevClass = GetInstance(mapModInputInfo[inPortId].stPrev.modKeyString);
     if (!pPrevClass)
     {
-        printf("Prev class is null!\n");
+        AMIGOS_ERR("Prev class is null!\n");
 
         return -1;
     }
@@ -879,14 +875,14 @@ int Sys::StartReceiver(unsigned int inPortId)
 
     if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
     {
-        printf("Can not find input port %d\n", inPortId);
+        AMIGOS_ERR("Can not find input port %d\n", inPortId);
 
         return -1;
     }
     pPrevClass = GetInstance(mapModInputInfo[inPortId].stPrev.modKeyString);
     if (!pPrevClass)
     {
-        printf("Prev class is null!\n");
+        AMIGOS_ERR("Prev class is null!\n");
 
         return -1;
     }
@@ -904,7 +900,7 @@ int Sys::StartReceiver(unsigned int inPortId)
     }
     else
     {
-        printf("Receiver did not create. inpot id %d current %s prev %s\n", inPortId, mapModInputInfo[inPortId].curIoKeyString.c_str(), mapModInputInfo[inPortId].stPrev.modKeyString.c_str());
+        AMIGOS_ERR("Receiver did not create. inpot id %d current %s prev %s\n", inPortId, mapModInputInfo[inPortId].curIoKeyString.c_str(), mapModInputInfo[inPortId].stPrev.modKeyString.c_str());
 
         return -1;
     }
@@ -919,14 +915,14 @@ int Sys::StopReceiver(unsigned int inPortId)
 
     if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
     {
-        printf("Can not find input port %d\n", inPortId);
+        AMIGOS_ERR("Can not find input port %d\n", inPortId);
 
         return -1;
     }
     pPrevClass = GetInstance(mapModInputInfo[inPortId].stPrev.modKeyString);
     if (!pPrevClass)
     {
-        printf("Prev class is null!\n");
+        AMIGOS_ERR("Prev class is null!\n");
 
         return -1;
     }
@@ -950,7 +946,7 @@ int Sys::StopReceiver(unsigned int inPortId)
     }
     else
     {
-        printf("Receiver did not create. inpot id %d current %s prev %s\n", inPortId, mapModInputInfo[inPortId].curIoKeyString.c_str(), mapModInputInfo[inPortId].stPrev.modKeyString.c_str());
+        AMIGOS_ERR("Receiver did not create. inpot id %d current %s prev %s\n", inPortId, mapModInputInfo[inPortId].curIoKeyString.c_str(), mapModInputInfo[inPortId].stPrev.modKeyString.c_str());
 
         return -1;
     }
@@ -966,7 +962,7 @@ int Sys::DestroyReceiver(unsigned int inPortId)
 
     if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
     {
-        printf("Can not find input port %d\n", inPortId);
+        AMIGOS_ERR("Can not find input port %d\n", inPortId);
 
         return -1;
     }
@@ -999,7 +995,68 @@ int Sys::DestroyReceiver(unsigned int inPortId)
 
     return 0;
 }
+int Sys::GetInputStreamInfo(unsigned int inPortId, stStreamInfo_t *pInfo)
+{
+    unsigned int uintPrevOutPort = 0;
+    Sys *pPrevClass = NULL;
 
+    if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
+    {
+        AMIGOS_ERR("Input port %d not found!!!\n", inPortId);
+
+        return -1;
+    }
+    pPrevClass = GetInstance(mapModInputInfo[inPortId].stPrev.modKeyString);
+    if (!pPrevClass)
+    {
+        AMIGOS_ERR("Prev class is null!\n");
+
+        return -1;
+    }
+    uintPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
+    if (pPrevClass->mapModOutputInfo.find(uintPrevOutPort) == pPrevClass->mapModOutputInfo.end())
+    {
+        AMIGOS_ERR("Output port %d not found!!!\n", inPortId);
+
+        return -1;
+    }
+    *pInfo = pPrevClass->mapModOutputInfo[uintPrevOutPort].stStreanInfo;
+
+    return 0;
+}
+
+int Sys::UpdateInputStreamInfo(unsigned int inPortId, stStreamInfo_t *pInfo)
+{
+    unsigned int uintPrevOutPort = 0;
+    Sys *pPrevClass = NULL;
+
+    if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
+    {
+        AMIGOS_ERR("Input port %d not found!!!\n", inPortId);
+
+        return -1;
+    }
+    pPrevClass = GetInstance(mapModInputInfo[inPortId].stPrev.modKeyString);
+    if (!pPrevClass)
+    {
+        AMIGOS_ERR("Prev class is null!\n");
+
+        return -1;
+    }
+    UnBindBlock(mapModInputInfo[inPortId]);
+    uintPrevOutPort = mapModInputInfo[inPortId].stPrev.portId;
+    if (pPrevClass->mapModOutputInfo.find(uintPrevOutPort) == pPrevClass->mapModOutputInfo.end())
+    {
+        AMIGOS_ERR("Output port %d not found!!!\n", inPortId);
+
+        return -1;
+    }
+    pPrevClass->ResetOut(uintPrevOutPort, pInfo);
+    pPrevClass->mapModOutputInfo[uintPrevOutPort].stStreanInfo = *pInfo;
+    BindBlock(mapModInputInfo[inPortId]);
+
+    return 0;
+}
 void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
 {
     MI_SYS_ChnPort_t stChnOutputPort;
@@ -1016,11 +1073,10 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
 #endif
     stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
     Sys *pClass = pReceiver->pSysClass;
-    stStreamInfo_t stStreamInfo;
+    stStreamData_t stStreamData;
 
-    if (pClass->bExtract)
-        return NULL;
-    memset(&stStreamInfo, 0, sizeof(stStreamInfo));
+    ASSERT(pClass);
+    memset(&stStreamData, 0, sizeof(stStreamData_t));
     stChnOutputPort.eModId = (MI_ModuleId_e)pClass->stModDesc.modId;
     stChnOutputPort.u32DevId = (MI_U32)pClass->stModDesc.devId;
     stChnOutputPort.u32ChnId = (MI_U32)pClass->stModDesc.chnId;
@@ -1055,24 +1111,19 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             }
             if (MI_SUCCESS == MI_SYS_ChnOutputPortGetBuf(&stChnOutputPort , &stBufInfo,&hHandle))
             {
-                stStreamInfo.eStreamType = (E_STREAM_TYPE)stBufInfo.stFrameData.ePixelFormat;
-                stStreamInfo.stYuvInfo.streamWidth = stBufInfo.stFrameData.u16Width;
-                stStreamInfo.stYuvInfo.streamHeight = stBufInfo.stFrameData.u16Height;
-                if(stStreamInfo.eStreamType == E_STREAM_YUV420)
+                stStreamData.stInfo.eStreamType = (E_STREAM_TYPE)stBufInfo.stFrameData.ePixelFormat;
+                stStreamData.stInfo.stFrameInfo.streamWidth = stBufInfo.stFrameData.u16Width;
+                stStreamData.stInfo.stFrameInfo.streamHeight = stBufInfo.stFrameData.u16Height;
+                if(stStreamData.stInfo.eStreamType == E_STREAM_YUV420)
                 {
-                    stStreamInfo.stYuvInfo.pYdataAddr = (char*)stBufInfo.stFrameData.pVirAddr[0];
-                    stStreamInfo.stYuvInfo.pUvDataAddr = (char*)stBufInfo.stFrameData.pVirAddr[1];
+                    stStreamData.stYuvSpData.pYdataAddr = (char*)stBufInfo.stFrameData.pVirAddr[0];
+                    stStreamData.stYuvSpData.pUvDataAddr = (char*)stBufInfo.stFrameData.pVirAddr[1];
                 }
-                else if(stStreamInfo.eStreamType == E_STREAM_YUV422)
+                else if(stStreamData.stInfo.eStreamType == E_STREAM_YUV422)
                 {
-                    stStreamInfo.stYuvInfo.pYuvDataAddr = (char*)stBufInfo.stFrameData.pVirAddr[0];
+                    stStreamData.pYuvData = (char*)stBufInfo.stFrameData.pVirAddr[0];
                 }
-                if (pClass->bSenderConnect == 0)
-                {
-                    pClass->Connect(pReceiver->uintPort, &stStreamInfo);
-                    pClass->bSenderConnect = 1;
-                }
-                pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
+                pClass->Send(pReceiver->uintPort, &stStreamData, sizeof(stStreamData_t));
                 MI_SYS_ChnOutputPortPutBuf(hHandle);
             }
             MI_SYS_CloseFd(s32Fd);
@@ -1091,24 +1142,24 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             memset(&stAecFrm, 0, sizeof(MI_AUDIO_AecFrame_t));
             if (MI_SUCCESS == MI_AI_GetFrame((MI_AUDIO_DEV)pClass->stModDesc.devId, (MI_AI_CHN)pClass->stModDesc.chnId, &stFrm, &stAecFrm, 40))
             {
-                stStreamInfo.eStreamType = E_STREAM_PCM;
-                stStreamInfo.stCodecInfo.uintPackCnt = 1;
+                stStreamData.stInfo.eStreamType = E_STREAM_PCM;
 #ifndef SSTAR_CHIP_I2
-                stStreamInfo.stPcmInfo.pData = (char *)stFrm.apSrcPcmVirAddr[0];
-                stStreamInfo.stPcmInfo.uintDataSize = stFrm.u32SrcPcmLen;
+                stStreamData.stPcmData.pData = (char *)stFrm.apSrcPcmVirAddr[0];
+                stStreamData.stPcmData.uintSize = stFrm.u32SrcPcmLen;
 #else
-                stStreamInfo.stPcmInfo.pData = (char *)stFrm.apVirAddr[0];
-                stStreamInfo.stPcmInfo.uintDataSize = stFrm.u32Len;
+                stStreamData.stPcmData.pData = (char *)stFrm.apVirAddr[0];
+                stStreamData.stPcmData.uintSize = stFrm.u32Len;
 #endif
                 pAiClass->GetInfo(stAiInfo);
-                stStreamInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
-                stStreamInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
-                if (pClass->bSenderConnect == 0)
+                stStreamData.stInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
+                stStreamData.stInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
+                ASSERT(pClass->mapModOutputInfo.find(pReceiver->uintPort) != pClass->mapModOutputInfo.end());
+                if (pClass->mapModOutputInfo[pReceiver->uintPort].bSenderConnect == 0)
                 {
-                    pClass->Connect(pReceiver->uintPort, &stStreamInfo);
-                    pClass->bSenderConnect = 1;
+                    pClass->Connect(pReceiver->uintPort, &stStreamData.stInfo);
+                    pClass->mapModOutputInfo[pReceiver->uintPort].bSenderConnect = 1;
                 }
-                pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
+                pClass->Send(pReceiver->uintPort, &stStreamData, sizeof(stStreamData_t));
                 MI_AI_ReleaseFrame(pClass->stModDesc.devId, pClass->stModDesc.chnId, &stFrm, &stAecFrm);
             }
         }
@@ -1160,22 +1211,23 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                     stEsPackage_t stEsPacket[16];
 
                     pVencClass->GetInfo(stVencInfo);
-                    stStreamInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
-                    stStreamInfo.stCodecInfo.uintPackCnt = stStream.u32PackCount;
+                    stStreamData.stInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
+                    stStreamData.stEsData.uintPackCnt = stStream.u32PackCount;
                     for (MI_U8 i = 0; i < stStream.u32PackCount; i++)
                     {
                         stEsPacket[i].uintDataSize = stStream.pstPack[i].u32Len;
                         stEsPacket[i].pData = (char*)stStream.pstPack[i].pu8Addr;
                         stEsPacket[i].bSliceEnd = stStream.pstPack[i].bFrameEnd;
                     }
-                    stStreamInfo.stCodecInfo.pDataAddr = stEsPacket;
-                    //printf("Receiver %p Get venc chn %d and send to port %d this is %s\n", pReceiver, stChnOutputPort.u32ChnId, pReceiver->uintPort, pClass->stModDesc.modKeyString.c_str());
-                    if (pClass->bSenderConnect == 0)
+                    stStreamData.stEsData.pDataAddr = stEsPacket;
+                    //AMIGOS_INFO("Receiver %p Get venc chn %d and send to port %d this is %s\n", pReceiver, stChnOutputPort.u32ChnId, pReceiver->uintPort, pClass->stModDesc.modKeyString.c_str());
+                    ASSERT(pClass->mapModOutputInfo.find(pReceiver->uintPort) != pClass->mapModOutputInfo.end());
+                    if (pClass->mapModOutputInfo[pReceiver->uintPort].bSenderConnect == 0)
                     {
-                        pClass->Connect(pReceiver->uintPort, &stStreamInfo);
-                        pClass->bSenderConnect = 1;
+                        pClass->Connect(pReceiver->uintPort, &stStreamData.stInfo);
+                        pClass->mapModOutputInfo[pReceiver->uintPort].bSenderConnect = 1;
                     }
-                    pClass->Send(pReceiver->uintPort, &stStreamInfo, sizeof(stStreamInfo));
+                    pClass->Send(pReceiver->uintPort, &stStreamData, sizeof(stStreamData_t));
                     MI_VENC_ReleaseStream(stChnOutputPort.u32ChnId, &stStream);
                 }
             }
@@ -1184,7 +1236,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
         break;
 #endif
         default:
-            printf("Do not support this mod %d now\n", pClass->stModDesc.modId);
+            AMIGOS_ERR("Do not support this mod %d now\n", pClass->stModDesc.modId);
             break;
     }
     return NULL;
@@ -1205,8 +1257,8 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
 {
     int y_size = 0;
     int uv_size = 0;
-    int yuv_size = 0;
-    stStreamInfo_t *pStreamInfo = NULL;
+    int data_size = 0;
+    stStreamData_t *pStreamData = NULL;
     MI_S32 s32Ret = E_MI_ERR_FAILED;
 
     MI_SYS_BUF_HANDLE hHandle;
@@ -1216,14 +1268,47 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
     Sys *pInstance = NULL;
 
     pInstance = (Sys *)pUsrData;
-    if (pInstance->bExtract)
-        return;
-    if (sizeof(stStreamInfo_t) == dataSize)
+    ASSERT(pInstance);
+    if (sizeof(stStreamData_t) == dataSize)
     {
-        pStreamInfo = (stStreamInfo_t *)pData;
-        switch (pStreamInfo->eStreamType)
+        pStreamData = (stStreamData_t *)pData;
+        switch (pStreamData->stInfo.eStreamType)
         {
             case E_STREAM_YUV420:
+            {
+                memset(&stBufConf ,  0 , sizeof(stBufConf));
+                memset(&stBufInfo ,  0 , sizeof(stBufInfo));
+                memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
+
+                stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
+                stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
+                stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
+                stSysChnInputPort.u32PortId = portId;
+
+                MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
+                stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
+                stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+                stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
+                if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
+                {
+                    y_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
+                    uv_size = y_size/2;
+                    memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->stYuvSpData.pYdataAddr, y_size);
+                    memcpy(stBufInfo.stFrameData.pVirAddr[1], pStreamData->stYuvSpData.pUvDataAddr, uv_size);
+                    s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
+                    if(s32Ret != MI_SUCCESS)
+                    {
+                        AMIGOS_ERR("put buf err is %x\n", s32Ret);
+                    }
+                }
+                else
+                {
+                    AMIGOS_ERR("get port buf err is %x\n", s32Ret);
+                }
+            }
+            break;
             case E_STREAM_YUV422:
             {
                 memset(&stBufConf ,  0 , sizeof(stBufConf));
@@ -1238,33 +1323,22 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                 MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
                 stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
                 stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
-                stBufConf.stFrameCfg.u16Width = pStreamInfo->stYuvInfo.streamWidth;
-                stBufConf.stFrameCfg.u16Height = pStreamInfo->stYuvInfo.streamHeight;
-                stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamInfo->eStreamType;
-
+                stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
                 if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
                 {
-                    if(stBufConf.stFrameCfg.eFormat == E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420)
-                    {
-                        y_size = pStreamInfo->stYuvInfo.streamWidth*pStreamInfo->stYuvInfo.streamHeight;
-                        uv_size = y_size/2;
-                        memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamInfo->stYuvInfo.pYdataAddr, y_size);
-                        memcpy(stBufInfo.stFrameData.pVirAddr[1], pStreamInfo->stYuvInfo.pUvDataAddr, uv_size);
-                    }
-                    else if(stBufConf.stFrameCfg.eFormat == E_MI_SYS_PIXEL_FRAME_YUV422_YUYV)
-                    {
-                        yuv_size = pStreamInfo->stYuvInfo.streamWidth*pStreamInfo->stYuvInfo.streamHeight*2;
-                        memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamInfo->stYuvInfo.pYuvDataAddr, yuv_size);
-                    }
+                    data_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 2;
+                    memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->pYuvData, data_size);
                     s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
                     if(s32Ret != MI_SUCCESS)
                     {
-                        printf("put buf err is %x\n", s32Ret);
+                        AMIGOS_ERR("put buf err is %x\n", s32Ret);
                     }
                 }
                 else
                 {
-                    printf("get port buf err is %x\n", s32Ret);
+                    AMIGOS_ERR("get port buf err is %x\n", s32Ret);
                 }
             }
             break;
@@ -1280,11 +1354,11 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                     unsigned int i=0;
                     MI_U64 u64Pts = 0;
                     MI_VDEC_VideoStream_t stVdecStream;
-                    for(i=0; i<pStreamInfo->stCodecInfo.uintPackCnt;i++)
+                    for(i=0; i<pStreamData->stEsData.uintPackCnt;i++)
                     {
                         memset(&stVdecStream, 0x0, sizeof(stVdecStream));
-                        stVdecStream.pu8Addr = (MI_U8*)pStreamInfo->stCodecInfo.pDataAddr[i].pData;
-                        stVdecStream.u32Len = pStreamInfo->stCodecInfo.pDataAddr[i].uintDataSize;
+                        stVdecStream.pu8Addr = (MI_U8*)pStreamData->stEsData.pDataAddr[i].pData;
+                        stVdecStream.u32Len = pStreamData->stEsData.pDataAddr[i].uintDataSize;
                         stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
                         stVdecStream.bEndOfFrame = 1;
                         stVdecStream.bEndOfStream = 0;
@@ -1292,7 +1366,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                         s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
                         if (MI_SUCCESS != s32Ret)
                         {
-                            printf("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                            AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
                         }
                     }
                 }
@@ -1308,7 +1382,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                     MI_AUDIO_Frame_t stAoFrame;
 
                     memset(&stAoFrame, 0, sizeof(MI_AUDIO_Frame_t));
-                    switch (pStreamInfo->stPcmInfo.uintBitLength)
+                    switch (pStreamData->stInfo.stPcmInfo.uintBitLength)
                     {
                         case 16:
                             stAoFrame.eBitwidth = E_MI_AUDIO_BIT_WIDTH_16;
@@ -1321,23 +1395,22 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                     }
                     stAoFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_STEREO;
 #ifndef SSTAR_CHIP_I2
-                    stAoFrame.u32Len = stAoFrame.u32SrcPcmLen = pStreamInfo->stPcmInfo.uintDataSize;
+                    stAoFrame.u32Len = stAoFrame.u32SrcPcmLen = pStreamData->stPcmData.uintSize;
 #else
-                    stAoFrame.u32Len = pStreamInfo->stPcmInfo.uintDataSize;
+                    stAoFrame.u32Len = pStreamData->stPcmData.uintSize;
 #endif
-                    stAoFrame.u64TimeStamp = pStreamInfo->stPcmInfo.ullTimeStampUs;
-                    stAoFrame.apVirAddr[0] = pStreamInfo->stPcmInfo.pData;
+                    stAoFrame.apVirAddr[0] = pStreamData->stPcmData.pData;
                     //printf("Send ao p %p size %d\n", pStreamInfo->stPcmInfo.pData, stAoFrame.u32SrcPcmLen);
                     if (MI_SUCCESS != MI_AO_SendFrame((MI_AUDIO_DEV)pInstance->stModDesc.devId, (MI_AO_CHN)pInstance->stModDesc.chnId, &stAoFrame, 40))
                     {
-                        printf("MI_AO_SendFrame fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                        AMIGOS_ERR("MI_AO_SendFrame fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
                     }
                 }
 #endif
             }
             break;
             default:
-                printf("Not support!!\n");
+                AMIGOS_ERR("Not support!!\n");
                 assert(0);
                 break;
         }

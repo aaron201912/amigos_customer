@@ -12,43 +12,27 @@
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
 
-#ifndef __AI_H__
-#define __AI_H__
+#ifndef __UVC_H__
+#define __UVC_H__
 
 #include "sys.h"
 
-typedef struct stAiInfo_s
-{
-    unsigned int uintSampleRate;
-    unsigned int uintBitWidth;
-    unsigned int uintWorkMode;
-    unsigned int uintSoundMode;
-    unsigned int uintChannelCnt;
-    int intVolume;
-}stAiInfo_t;
-
-class Ai: public Sys
+class Uvc: public Sys
 {
     public:
-        Ai();
-        virtual ~Ai();
-        void GetInfo(stAiInfo_t &info)
-        {
-            info = stAiInfo;
-        }
-        void UpdateInfo(stAiInfo_t &info)
-        {
-            stAiInfo = info;
-            mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
-            mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
-            mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintChannelCnt = stAiInfo.uintChannelCnt;
-        };
-
+        Uvc();
+        virtual ~Uvc();
     private:
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
-        stAiInfo_t stAiInfo;
+        virtual void BindBlock(stModInputInfo_t & stIn);
+        virtual void UnBindBlock(stModInputInfo_t & stIn);
+        virtual int CreateSender(unsigned int outPortId);
+        virtual int DestroySender(unsigned int outPortId);
+        virtual int StartSender(unsigned int outPortId);
+        virtual int StopSender(unsigned int outPortId);
+        static void DataReceiver(void *pData, unsigned int dataSize, void *pUsrData,  unsigned char portId);
 };
 #endif
 

@@ -46,6 +46,24 @@ void Vif::LoadDb()
             mapVifOutInfo[itMapOut->second.curPortId].intUserFormat = GetIniInt(itMapOut->second.curIoKeyString, "USER_FMT");
             mapVifOutInfo[itMapOut->second.curPortId].intWidth = GetIniInt(itMapOut->second.curIoKeyString, "VID_W");
             mapVifOutInfo[itMapOut->second.curPortId].intHeight = GetIniInt(itMapOut->second.curIoKeyString, "VID_H");
+            if (itMapOut->second.stStreanInfo.eStreamType >= E_STREAM_RGB_BAYER_BASE && itMapOut->second.stStreanInfo.eStreamType <= E_STREAM_RGB_BAYER_MAX)
+            {
+                itMapOut->second.stStreanInfo.stFrameInfo.streamWidth = mapVifOutInfo[itMapOut->second.curPortId].intWidth;
+                itMapOut->second.stStreanInfo.stFrameInfo.streamHeight = mapVifOutInfo[itMapOut->second.curPortId].intHeight;
+            }
+            else
+            {
+                switch (itMapOut->second.stStreanInfo.eStreamType)
+                {
+                    case E_STREAM_YUV422:
+                    case E_STREAM_YUV420:
+                        itMapOut->second.stStreanInfo.stFrameInfo.streamWidth = mapVifOutInfo[itMapOut->second.curPortId].intWidth;
+                        itMapOut->second.stStreanInfo.stFrameInfo.streamHeight = mapVifOutInfo[itMapOut->second.curPortId].intHeight;
+                        break;
+                    default:
+                        ASSERT(0);
+                }
+            }
         }
         else
         {
@@ -118,10 +136,10 @@ void Vif::Init()
         else
         {
             ePixFormat = (MI_SYS_PixelFormat_e)itMapVifOut->second.intUserFormat;
-            stChnPortAttr.stCapRect.u16Width = (MI_U16)((unsigned int)itMapVifOut->second.intWidth < u32CapWidth ? itMapVifOut->second.intWidth : u32CapWidth);
-            stChnPortAttr.stCapRect.u16Height = (MI_U16)((unsigned int)itMapVifOut->second.intHeight < u32CapHeight ? itMapVifOut->second.intHeight : u32CapHeight);
+            stChnPortAttr.stCapRect.u16Width = u32CapWidth;
+            stChnPortAttr.stCapRect.u16Height = u32CapHeight;
             stChnPortAttr.stDestSize.u16Width = (MI_U16)((unsigned int)itMapVifOut->second.intWidth < u32CapWidth ? itMapVifOut->second.intWidth : u32CapWidth);
-            stChnPortAttr.stDestSize.u16Height = (MI_U16)(unsigned int)(itMapVifOut->second.intHeight < u32CapHeight ? itMapVifOut->second.intHeight : u32CapHeight);
+            stChnPortAttr.stDestSize.u16Height = (MI_U16)((unsigned int)itMapVifOut->second.intHeight < u32CapHeight ? itMapVifOut->second.intHeight : u32CapHeight);
         }
         stChnPortAttr.ePixFormat = ePixFormat;//E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420;
         stChnPortAttr.eFrameRate = eFrameRate;
@@ -137,7 +155,11 @@ void Vif::Init()
 }
 void Vif::Deinit()
 {
-    MI_VIF_DisableChnPort((MI_VIF_CHN)stModDesc.chnId, 0);
+    std::map<unsigned int, stVifOutInfo_t>::iterator itMapVifOut;
+    for(itMapVifOut = mapVifOutInfo.begin(); itMapVifOut != mapVifOutInfo.end(); itMapVifOut++)
+    {
+        MI_VIF_DisableChnPort((MI_VIF_CHN)stModDesc.chnId, itMapVifOut->first);
+    }
     MI_VIF_DisableDev((MI_VIF_DEV)stModDesc.devId);
 }
 

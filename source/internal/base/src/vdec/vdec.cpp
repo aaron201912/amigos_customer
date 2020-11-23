@@ -34,6 +34,9 @@ void Vdec::LoadDb()
         stDecOutInfo.uintDecOutWidth = GetIniInt(itVdecOut->second.curIoKeyString, "VID_W");
         stDecOutInfo.uintDecOutHeight = GetIniInt(itVdecOut->second.curIoKeyString, "VID_H");
         vDecOutInfo.push_back(stDecOutInfo);
+        itVdecOut->second.stStreanInfo.eStreamType = E_STREAM_YUV420;
+        itVdecOut->second.stStreanInfo.stFrameInfo.streamWidth = stDecOutInfo.uintDecOutWidth;
+        itVdecOut->second.stStreanInfo.stFrameInfo.streamHeight = stDecOutInfo.uintDecOutHeight;
     }
 }
 void Vdec::Incoming(stStreamInfo_t *pInfo)
@@ -56,6 +59,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
             eCodecType = E_MI_VDEC_CODEC_TYPE_JPEG;
             break;
         default:
+            AMIGOS_ERR("Fmt error %d\n", pInfo->eStreamType);
             ASSERT(0);
     }
     if (eCodecType != stVdecChnAttr.eCodecType)
@@ -65,7 +69,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
 #endif
         std::vector<stDecOutInfo_t>::iterator itVdecOut;
 
-        printf("Codec type is different need reset to %d\n", eCodecType);
+        AMIGOS_INFO("Codec type is different need reset to %d\n", eCodecType);
         MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
         MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
         stVdecChnAttr.eCodecType = eCodecType;
@@ -87,6 +91,8 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
             stOutputPortAttr.u16Height = itVdecOut->uintDecOutHeight;
             MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
 #endif
+            mapModOutputInfo[itVdecOut->intPortId].stStreanInfo.stFrameInfo.streamWidth = itVdecOut->uintDecOutWidth;
+            mapModOutputInfo[itVdecOut->intPortId].stStreanInfo.stFrameInfo.streamHeight = itVdecOut->uintDecOutHeight;
         }
     }
 }
@@ -95,6 +101,23 @@ void Vdec::Outcoming()
     MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
     MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
 }
+void Vdec::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
+{
+#ifndef SSTAR_CHIP_I2
+    std::vector<stDecOutInfo_t>::iterator itVdecOut;
+    MI_VDEC_OutputPortAttr_t stOutputPortAttr;
+
+    for (itVdecOut = vDecOutInfo.begin(); itVdecOut != vDecOutInfo.end(); itVdecOut++)
+    {
+        memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
+        stOutputPortAttr.u16Width = pInfo->stFrameInfo.streamWidth;
+        stOutputPortAttr.u16Height = pInfo->stFrameInfo.streamHeight;
+        MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
+    }
+#endif
+    AMIGOS_INFO("Vdec reset out to w %d h %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType);
+}
+
 void Vdec::Init()
 {
     MI_VDEC_ChnAttr_t stVdecChnAttr;

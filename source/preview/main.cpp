@@ -193,7 +193,9 @@ int main(int argc, char **argv)
     mapModId["AI"] = E_SYS_MOD_AI;
     mapModId["AO"] = E_SYS_MOD_AO;
     mapModId["SLOT"] = E_SYS_MOD_SLOT;
+#ifndef SSTAR_CHIP_I2
     mapModId["SNR"] = E_SYS_MOD_SNR;
+#endif
     for (i = 1; i < (unsigned int)argc; i++)
     {
         vectIniFiles.push_back(argv[i]);

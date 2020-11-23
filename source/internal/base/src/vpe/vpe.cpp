@@ -103,7 +103,7 @@ static MI_S32 Vpe_StartPort(MI_VPE_PORT VpePort, VPE_PortInfo_t *pstPortInfo)
     MI_VPE_PortMode_t stVpeMode;
     MI_SYS_WindowRect_t stCrop;
 
-    printf("############........Vpe_StartPort......%d  %d....\n", pstPortInfo->DepVpeChannel, VpePort);
+    AMIGOS_INFO("############........Vpe_StartPort......%d  %d....\n", pstPortInfo->DepVpeChannel, VpePort);
 
     memset(&stVpeMode, 0, sizeof(stVpeMode));
     memset(&stCrop, 0, sizeof(MI_SYS_WindowRect_t));
@@ -155,13 +155,16 @@ void Vpe::LoadDb()
     {
         memset(&stVpeOut, 0, sizeof(stVpeOutInfo_t));
         stVpeOut.intVpeOutFmt = GetIniInt(itMapVpeOut->second.curIoKeyString, "VID_FMT");
-        //printf("%s : VID_FMT %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutFmt);
-        stVpeOut.intVpeOutWidth= GetIniInt(itMapVpeOut->second.curIoKeyString, "VID_W");
-        //printf("%s : VID_W %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutWidth);
-        stVpeOut.intVpeOutHeight= GetIniInt(itMapVpeOut->second.curIoKeyString, "VID_H");
-        //printf("%s : VID_H %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutHeight);
+        //AMIGOS_INFO("%s : VID_FMT %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutFmt);
+        stVpeOut.intVpeOutWidth = GetIniInt(itMapVpeOut->second.curIoKeyString, "VID_W");
+        //AMIGOS_INFO("%s : VID_W %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutWidth);
+        stVpeOut.intVpeOutHeight = GetIniInt(itMapVpeOut->second.curIoKeyString, "VID_H");
+        //AMIGOS_INFO("%s : VID_H %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutHeight);
         stVpeOut.intPortId = itMapVpeOut->second.curPortId;
         vVpeOutInfo.push_back(stVpeOut);
+        itMapVpeOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stVpeOut.intVpeOutFmt;
+        itMapVpeOut->second.stStreanInfo.stFrameInfo.streamWidth = stVpeOut.intVpeOutWidth;
+        itMapVpeOut->second.stStreanInfo.stFrameInfo.streamHeight = stVpeOut.intVpeOutHeight;
     }
 }
 void Vpe::Init()
@@ -205,10 +208,10 @@ void Vpe::Init()
         }
         u16Width = stSnrPlane0Info.stCapRect.u16Width;
         u16Height= stSnrPlane0Info.stCapRect.u16Height;
-        printf("lane num %d\n", stPad0Info.unIntfAttr.stMipiAttr.u32LaneNum);
-        printf("w  %d\n", u16Width);
-        printf("w  %d\n", u16Height);
-        printf("fmt  %d\n", stVpeInfo.intInputFmt);
+        AMIGOS_INFO("lane num %d\n", stPad0Info.unIntfAttr.stMipiAttr.u32LaneNum);
+        AMIGOS_INFO("w  %d\n", u16Width);
+        AMIGOS_INFO("w  %d\n", u16Height);
+        AMIGOS_INFO("fmt  %d\n", stVpeInfo.intInputFmt);
 #endif
     }
     else
@@ -281,7 +284,20 @@ void Vpe::Init()
         Vpe_StartPort(itVpeOut->intPortId, &stVpePortInfo);
     }
 }
+void Vpe::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
+{
+    VPE_PortInfo_t stVpePortInfo;
 
+    Vpe_StopPort((MI_VPE_CHANNEL)stModDesc.chnId, outPortId);
+    memset(&stVpePortInfo, 0, sizeof(VPE_PortInfo_t));
+    stVpePortInfo.DepVpeChannel = (MI_VPE_CHANNEL)stModDesc.chnId;
+    stVpePortInfo.ePixelFormat = (MI_SYS_PixelFormat_e)pInfo->eStreamType;
+    stVpePortInfo.u16OutputWidth = (MI_U16)pInfo->stFrameInfo.streamWidth;
+    stVpePortInfo.u16OutputHeight = (MI_U16)pInfo->stFrameInfo.streamHeight;
+    stVpePortInfo.eCompressMode = E_MI_SYS_COMPRESS_MODE_NONE;
+    Vpe_StartPort(outPortId, &stVpePortInfo);
+    AMIGOS_INFO("Vpe reset out to w %d h %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType);
+}
 void Vpe::Deinit()
 {
     std::vector<stVpeOutInfo_t>::iterator itVpeOutInfo;

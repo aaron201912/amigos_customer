@@ -19,6 +19,17 @@
 #include <mi_vdisp.h>
 #include "vdisp.h"
 
+typedef struct stSys_BindInfo_s
+{
+    MI_SYS_ChnPort_t stSrcChnPort;
+    MI_SYS_ChnPort_t stDstChnPort;
+    MI_U32 u32SrcFrmrate;
+    MI_U32 u32DstFrmrate;
+#ifndef SSTAR_CHIP_I2
+    MI_SYS_BindType_e eBindType;
+    MI_U32 u32BindParam;
+#endif
+} stSys_BindInfo_T;
 
 Vdisp::Vdisp()
 {
@@ -53,6 +64,7 @@ void Vdisp::LoadDb()
     for (itMapVdispOut = mapModOutputInfo.begin(); itMapVdispOut != mapModOutputInfo.end(); itMapVdispOut++)
     {
         memset(&stVdispOutputInfo, 0, sizeof(stVdispOutputInfo_t));
+        stVdispOutputInfo.intPortId = itMapVdispOut->second.curPortId;
         stVdispOutputInfo.intVdispOutFrameRate = itMapVdispOut->second.curFrmRate;
         stVdispOutputInfo.intVdispOutWidth = GetIniInt(itMapVdispOut->second.curIoKeyString, "VID_W");
         stVdispOutputInfo.intVdispOutHeight = GetIniInt(itMapVdispOut->second.curIoKeyString, "VID_H");
@@ -60,6 +72,9 @@ void Vdisp::LoadDb()
         stVdispOutputInfo.intVdispOutFormat = GetIniInt(itMapVdispOut->second.curIoKeyString, "VID_FMT");
         stVdispOutputInfo.intVdispOutBkColor = GetIniInt(itMapVdispOut->second.curIoKeyString, "BK_COLOR");
         vVdispOutputInfo.push_back(stVdispOutputInfo);
+        itMapVdispOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stVdispOutputInfo.intVdispOutFormat;
+        itMapVdispOut->second.stStreanInfo.stFrameInfo.streamWidth = stVdispOutputInfo.intVdispOutWidth;
+        itMapVdispOut->second.stStreanInfo.stFrameInfo.streamHeight = stVdispOutputInfo.intVdispOutHeight;
     }
 }
 void Vdisp::Init()
@@ -152,6 +167,58 @@ void Vdisp::Init()
     }   
     MI_VDISP_StartDev(stModDesc.devId);
 }
+void Vdisp::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
+
+    memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
+    stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
+    stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+#endif
+    stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+    stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+    stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+    stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+    stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+    stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+    stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+    stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+#ifndef SSTAR_CHIP_I2
+    stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+    stBindInfo.stDstChnPort.u32PortId = 0;
+    MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+#else
+    stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+    stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+    MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+#endif
+}
+void Vdisp::PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
+{
+    stSys_BindInfo_T stBindInfo;
+
+    memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
+#ifndef SSTAR_CHIP_I2
+    stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
+    stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
+#endif
+    stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
+    stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
+    stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;
+    stBindInfo.stDstChnPort.eModId = (MI_ModuleId_e)stModDesc.modId;
+    stBindInfo.stDstChnPort.u32DevId = stModDesc.devId;
+    stBindInfo.u32DstFrmrate = stIn.curFrmRate;
+#ifndef SSTAR_CHIP_I2
+    stBindInfo.stDstChnPort.u32ChnId = stIn.curPortId;
+    stBindInfo.stDstChnPort.u32PortId = 0;
+#else
+    stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
+    stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
+#endif
+    MI_SYS_UnBindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort);
+}
+
 void Vdisp::Deinit()
 {
     std::vector<stVdispInputInfo_t>::iterator itVdispIn;

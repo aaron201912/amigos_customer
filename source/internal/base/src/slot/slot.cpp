@@ -91,7 +91,7 @@ void Slot::BindBlock(stModInputInfo_t & stIn)
     }
     else
     {
-        printf("Slot not support!\n");
+        AMIGOS_INFO("Slot not support!\n");
     }
 }
 void Slot::UnBindBlock(stModInputInfo_t & stIn)
@@ -102,8 +102,8 @@ void Slot::UnBindBlock(stModInputInfo_t & stIn)
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
     if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
     {
-        //printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-        //printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+        //AMIGOS_INFO("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+        //AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
         memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
         stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
         stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;

@@ -44,7 +44,8 @@ endif
 ifneq ($(interface_sensor), disable)
 SUBDIRS += $(CUR_DIR)/src/snr
 endif
-
+SUBDIRS += $(CUR_DIR)/src/uvc
+SUBDIRS += $(CUR_DIR)/src/uac
 SUBDIRS += $(CUR_DIR)/src/file
 SUBDIRS += $(CUR_DIR)/src/rtsp
 SUBDIRS += $(CUR_DIR)/src/sys

@@ -30,7 +30,7 @@ static MI_S32 Venc_CreateChannel(MI_VENC_CHN VencChn, MI_VENC_ChnAttr_t *pstAttr
 
     if (pstAttr == NULL)
     {
-        printf("invalid param\n");
+        AMIGOS_INFO("invalid param\n");
         return -1;
     }
 
@@ -42,7 +42,7 @@ static MI_S32 Venc_CreateChannel(MI_VENC_CHN VencChn, MI_VENC_ChnAttr_t *pstAttr
         memset(&stParamJpeg, 0, sizeof(stParamJpeg));
         ExecFunc(MI_VENC_GetJpegParam(VencChn, &stParamJpeg), MI_SUCCESS);
 
-        printf("Get u32Qfactor:%d\n", stParamJpeg.u32Qfactor);
+        AMIGOS_INFO("Get u32Qfactor:%d\n", stParamJpeg.u32Qfactor);
 
         stParamJpeg.u32Qfactor = 50;
 
@@ -90,6 +90,9 @@ void Venc::LoadDb()
     stVencInfo.intEncodeFps = GetIniInt(stModDesc.modKeyString,"EN_FPS");
     stVencInfo.intMultiSlice = GetIniInt(stModDesc.modKeyString,"MULTI_SLICE");
     stVencInfo.intSliceRowCnt = GetIniInt(stModDesc.modKeyString,"SLICE_ROW_CNT");
+    mapModOutputInfo[0].stStreanInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
+    mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamWidth = stVencInfo.intWidth;
+    mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamHeight = stVencInfo.intHeight;
 }
 void Venc::Init()
 {
@@ -195,24 +198,37 @@ void Venc::Init()
             {
                 stVenInSrc.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_RING_ONE_FRM;
                 s32Ret = MI_VENC_SetInputSourceConfig((MI_VENC_CHN)stModDesc.chnId, &stVenInSrc);
-                printf("Set ring one frame mode! Chn %d height %d ret %d\n", stModDesc.chnId, stVencInfo.intHeight, s32Ret);
+                AMIGOS_INFO("Set ring one frame mode! Chn %d height %d ret %d\n", stModDesc.chnId, stVencInfo.intHeight, s32Ret);
             }
             else
             {
                 stVenInSrc.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_RING_HALF_FRM;
                 s32Ret = MI_VENC_SetInputSourceConfig((MI_VENC_CHN)stModDesc.chnId, &stVenInSrc);
-                printf("Set ring half frame mode! Chn %d height %d ret %d\n", stModDesc.chnId, stVencInfo.intHeight, s32Ret);
+                AMIGOS_INFO("Set ring half frame mode! Chn %d height %d ret %d\n", stModDesc.chnId, stVencInfo.intHeight, s32Ret);
             }
         }
         else
         {
             stVenInSrc.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_NORMAL_FRMBASE;
             s32Ret = MI_VENC_SetInputSourceConfig((MI_VENC_CHN)stModDesc.chnId, &stVenInSrc);
-            printf("Set frame mode! ret %d\n", s32Ret);
+            AMIGOS_INFO("Set frame mode! ret %d\n", s32Ret);
         }
     }
 #endif
     Venc_StartChannel((MI_VENC_CHN)stModDesc.chnId);
+}
+void Venc::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
+{
+    stStreamInfo_t stPreStreamInfo;
+
+    GetInputStreamInfo(0, &stPreStreamInfo);
+    stPreStreamInfo.stFrameInfo.streamWidth = pInfo->stFrameInfo.streamWidth;
+    stPreStreamInfo.stFrameInfo.streamHeight = pInfo->stFrameInfo.streamHeight;
+    UpdateInputStreamInfo(0, &stPreStreamInfo);
+    stVencInfo.intEncodeType = pInfo->eStreamType;
+    Deinit();
+    Init();
+    AMIGOS_INFO("Venc reset out to w %d h %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType);
 }
 
 void Venc::Deinit()

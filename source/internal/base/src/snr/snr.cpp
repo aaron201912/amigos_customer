@@ -46,7 +46,7 @@ void Snr::Init()
     for(u8ResIndex = 0; u8ResIndex < u32ResCount; u8ResIndex++)
     {
         MI_SNR_GetRes((MI_SNR_PAD_ID_e)stSnrInfo.intSensorId, u8ResIndex, &stRes);
-        printf("index %d, Crop(%d,%d,%d,%d), outputsize(%d,%d), maxfps %d, minfps %d, ResDesc %s\n",
+        AMIGOS_INFO("index %d, Crop(%d,%d,%d,%d), outputsize(%d,%d), maxfps %d, minfps %d, ResDesc %s\n",
         u8ResIndex,
         stRes.stCropRect.u16X, stRes.stCropRect.u16Y, stRes.stCropRect.u16Width,stRes.stCropRect.u16Height,
         stRes.stOutputSize.u16Width, stRes.stOutputSize.u16Height,
@@ -55,10 +55,10 @@ void Snr::Init()
     }
     if(stSnrInfo.intSensorRes >= (int)u32ResCount)
     {
-        printf("choice err res %d > =cnt %d\n", stSnrInfo.intSensorRes, u32ResCount);
+        AMIGOS_ERR("choice err res %d > =cnt %d\n", stSnrInfo.intSensorRes, u32ResCount);
         assert(0);
     }
-    printf("You choose sensor res is %d\n", stSnrInfo.intSensorRes);
+    AMIGOS_INFO("You choose sensor res is %d\n", stSnrInfo.intSensorRes);
     MI_SNR_SetRes((MI_SNR_PAD_ID_e)stSnrInfo.intSensorId, (MI_U32)stSnrInfo.intSensorRes);
     MI_SNR_Enable((MI_SNR_PAD_ID_e)stSnrInfo.intSensorId);
 }

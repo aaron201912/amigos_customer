@@ -38,6 +38,9 @@
 #define YUYV_BLUE               MAKE_YUYV_VALUE(29,225,107)
 #define ALIGN16_DOWN(x) (x&0xFFF0)
 
+#define AMIGOS_INFO(fmt, args...) printf("[AMI_INFO][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);
+#define AMIGOS_ERR(fmt, args...) printf("[AMI_ERR][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);
+
 
 #ifndef ExecFunc
 #define ExecFunc(_func_, _ret_) \
@@ -46,12 +49,12 @@
         s32Ret = _func_; \
         if (s32Ret != _ret_) \
         { \
-            printf("[%s %d]exec function failed, error:%x\n", __func__, __LINE__, s32Ret); \
+            AMIGOS_ERR("[%s %d]exec function failed, error:%x\n", __func__, __LINE__, s32Ret); \
             return s32Ret; \
         } \
         else \
         { \
-            printf("[%s %d]exec function pass\n", __func__, __LINE__); \
+            AMIGOS_INFO("[%s %d]exec function pass\n", __func__, __LINE__); \
         } \
     } while(0)
 #endif
@@ -63,12 +66,12 @@
         s32Ret = _func_; \
         if (s32Ret != MI_SUCCESS)\
         { \
-            printf("[%s %d]exec function failed, error:%x\n", __func__, __LINE__, s32Ret); \
+            AMIGOS_ERR("[%s %d]exec function failed, error:%x\n", __func__, __LINE__, s32Ret); \
             return s32Ret; \
         } \
         else \
         { \
-            printf("(%s %d)exec function pass\n", __FUNCTION__,__LINE__); \
+            AMIGOS_INFO("(%s %d)exec function pass\n", __FUNCTION__,__LINE__); \
         } \
     } while(0)
 #endif
@@ -83,13 +86,22 @@ typedef enum
 
 typedef enum
 {
-    E_STREAM_YUV422 = 0,
-    E_STREAM_YUV420 = 11,
+    E_STREAM_YUV422 = E_MI_SYS_PIXEL_FRAME_YUV422_YUYV,
+#ifndef SSTAR_CHIP_I2
+	E_STREAM_ARGB8888 = E_MI_SYS_PIXEL_FRAME_ARGB8888,
+    E_STREAM_ABGR8888 = E_MI_SYS_PIXEL_FRAME_ABGR8888,
+    E_STREAM_BGRA8888 = E_MI_SYS_PIXEL_FRAME_BGRA8888,
+#endif
+	E_STREAM_YUV420 = E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420,
     E_STREAM_H264,
     E_STREAM_H265,
     E_STREAM_JPEG,
     E_STREAM_PCM,
-    E_STREAM_MAX
+#ifndef SSTAR_CHIP_I2
+	E_STREAM_RGB_BAYER_BASE = E_MI_SYS_PIXEL_FRAME_RGB_BAYER_BASE,
+    E_STREAM_RGB_BAYER_MAX = E_MI_SYS_PIXEL_FRAME_RGB_BAYER_NUM,
+#endif
+    E_STREAM_MAX = E_MI_SYS_PIXEL_FRAME_FORMAT_MAX,
 }E_STREAM_TYPE;
 
 typedef enum
@@ -116,15 +128,6 @@ typedef struct stFaceInfo_s
     unsigned short winHei;
 }stFaceInfo_t;
 
-typedef struct stYuvInfo_s
-{
-    unsigned int streamWidth;
-    unsigned int streamHeight;
-    char *pYdataAddr;
-    char *pUvDataAddr;
-    char *pYuvDataAddr;
-}stYuvInfo_t;
-
 typedef struct stEsPackage_s
 {
     unsigned int uintDataSize;
@@ -132,22 +135,35 @@ typedef struct stEsPackage_s
     char *pData;
 }stEsPackage_t;
 
-typedef struct stCodecInfo_s
+typedef struct stEsData_s
 {
-    unsigned long long ullTimeStampUs;
-    unsigned int streamWidth;
-    unsigned int streamHeight;
     unsigned int uintPackCnt;
     stEsPackage_t *pDataAddr;
-}stCodeInfo_t;
+}stEsData_t;
+
+typedef struct stPcmData_s
+{
+    unsigned int uintSize;
+    char *pData;
+}stPcmData_t;
+
+typedef struct stYuvSpData_s
+{
+    char *pYdataAddr;
+    char *pUvDataAddr;
+}stYuvSpData_t;
+
+typedef struct stVideoFrameInfo_s
+{
+    unsigned int streamWidth;
+    unsigned int streamHeight;
+}stVideoFrameInfo_t;
+
 typedef struct stPcmInfo_s
 {
-    unsigned long long ullTimeStampUs;
     unsigned int uintBitRate;
     unsigned int uintBitLength;
     unsigned int uintChannelCnt;
-    unsigned int uintDataSize;
-    char *pData;
 }stPcmInfo_t;
 
 typedef struct stStreamInfo_s
@@ -155,11 +171,21 @@ typedef struct stStreamInfo_s
     E_STREAM_TYPE eStreamType;    
     union
     {
-       stYuvInfo_t  stYuvInfo;
-       stCodeInfo_t stCodecInfo;
+       stVideoFrameInfo_t stFrameInfo; 
        stPcmInfo_t stPcmInfo;
     };
 }stStreamInfo_t;
+typedef struct stStreamData_s
+{
+    stStreamInfo_t stInfo;
+    union
+    {
+        char *pYuvData;
+        stPcmData_t stPcmData;
+        stYuvSpData_t stYuvSpData;
+        stEsData_t stEsData;
+    };
+}stStreamData_t;
 
 typedef struct stModDesc_s
 {
@@ -186,6 +212,8 @@ typedef struct stModOutputInfo_s
     std::string curIoKeyString;
     unsigned int curPortId;
     unsigned int curFrmRate;
+    unsigned int bSenderConnect;
+    stStreamInfo_t stStreanInfo;
     std::vector<stModIoInfo_t> vectNext;
 }stModOutputInfo_t;
 typedef void (*DeliveryRecFp)(void *, unsigned int, void *, unsigned char);
@@ -202,8 +230,10 @@ typedef enum
     E_SYS_MOD_LDC = E_MI_MODULE_ID_LDC,
     E_SYS_MOD_AI = E_MI_MODULE_ID_AI,
     E_SYS_MOD_AO = E_MI_MODULE_ID_AO,
-    E_SYS_MOD_SNR = E_MI_MODULE_ID_SNR,
-    E_SYS_MOD_INT_MAX = E_MI_MODULE_ID_MAX,
+#ifndef SSTAR_CHIP_I2
+	E_SYS_MOD_SNR = E_MI_MODULE_ID_SNR,
+#endif
+	E_SYS_MOD_INT_MAX = E_MI_MODULE_ID_MAX,
     E_SYS_MOD_SIGNAL_MONITOR,
     E_SYS_MOD_IQ,
     E_SYS_MOD_SLOT,
@@ -213,6 +243,8 @@ typedef enum
     E_SYS_MOD_FDFR,
     E_SYS_MOD_UI,
     E_SYS_MOD_FILE,
+    E_SYS_MOD_UAC,
+    E_SYS_MOD_UVC,
     E_SYS_MOD_MAX
 }E_SYS_MOD;
 typedef struct stModuleAttr_s
@@ -254,8 +286,6 @@ class Sys
         };
         Sys()
         {
-            bExtract = 0;
-            bSenderConnect = 0;
             gstSwitchSrcMutex = PTHREAD_MUTEX_INITIALIZER;
         }
         virtual ~Sys(){}
@@ -271,10 +301,19 @@ class Sys
         static Sys* GetInstance(std::string &strKey){return (connectMap.find(strKey) != connectMap.end()) ? connectMap[strKey] : NULL;}
         void GetModDesc(stModDesc_t &stDesc){stDesc = stModDesc;}
 
+        //Reset stream api
+        int GetInputStreamInfo(unsigned int inPortId, stStreamInfo_t *pInfo);
+        int UpdateInputStreamInfo(unsigned int inPortId, stStreamInfo_t *pInfo);
+
     protected:
         //Modules flow: Init->BindBlock->Start;Stop->UnBindBlock->Deinit
         virtual void BindBlock(stModInputInfo_t & stIn);
         virtual void UnBindBlock(stModInputInfo_t & stIn);
+        virtual void PrevExtBind(stModInputInfo_t & stIn);
+        virtual void PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
+        virtual void PrevExtUnBind(stModInputInfo_t & stIn);
+        virtual void PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
+
         virtual void LoadDb(){};
         virtual void Init() = 0;
         virtual void Deinit() = 0;
@@ -282,6 +321,7 @@ class Sys
         virtual void Stop();
         virtual void Incoming(stStreamInfo_t *pInfo){};
         virtual void Outcoming(){};
+        virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo){};
 
         //Delivery api
         virtual int CreateSender(unsigned int outPortId);
@@ -297,6 +337,7 @@ class Sys
         int DestroyReceiver(unsigned int inPortId);
         int StartReceiver(unsigned int inPortId);
         int StopReceiver(unsigned int inPortId);
+
         //INI operation
         static int GetIniInt(std::string section, std::string key, int intDefault = -1);
         static unsigned int GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault = -1);
@@ -350,8 +391,6 @@ class Sys
         static std::map<std::string, unsigned int> connectIdMap;
         static dictionary *m_pstDict;
         static pthread_mutex_t gstUsrMutex;
-        unsigned char bExtract;
-        unsigned char bSenderConnect;
 };
 
 #endif

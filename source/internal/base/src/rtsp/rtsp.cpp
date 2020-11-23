@@ -446,7 +446,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
     envir() << "\n";
 #endif
 
-    stStreamInfo_t stStreamInfo;
+    stStreamData_t stStreamData;
     std::string tmpMediaStr;
     std::string tmpCodecStr;
     stModDesc_t stModeDesc;
@@ -463,22 +463,21 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
     {
         if (pstClientOutInfo->bHasAudioPcm)
         {
-            stStreamInfo.eStreamType = E_STREAM_PCM;
+            stStreamData.stInfo.eStreamType = E_STREAM_PCM;
             //envir() << " Bandwidth " << fSubsession.bandwidth() << " Channel : " << fSubsession.numChannels() << " Sample rate " << fSubsession.rtpTimestampFrequency();
             //envir() << tmpCodecStr.c_str() << " Buf size " << frameSize << " Buffer : "<< (void *)fReceiveBuffer <<"\n";
-            stStreamInfo.stPcmInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
-            stStreamInfo.stPcmInfo.uintBitLength = 16;
-            stStreamInfo.stPcmInfo.uintBitRate = (unsigned int)fSubsession.rtpTimestampFrequency();
-            stStreamInfo.stPcmInfo.uintChannelCnt = (unsigned int)fSubsession.numChannels();
-            stStreamInfo.stPcmInfo.uintDataSize = frameSize;
-            stStreamInfo.stPcmInfo.pData = (char *)malloc(frameSize);
-            ASSERT(stStreamInfo.stPcmInfo.pData);
-            AudioPcmCopyS16beToS16le(stStreamInfo.stPcmInfo.pData, fReceiveBuffer, frameSize);
+            stStreamData.stInfo.stPcmInfo.uintBitLength = 16;
+            stStreamData.stInfo.stPcmInfo.uintBitRate = (unsigned int)fSubsession.rtpTimestampFrequency();
+            stStreamData.stInfo.stPcmInfo.uintChannelCnt = (unsigned int)fSubsession.numChannels();
+            stStreamData.stPcmData.uintSize= frameSize;
+            stStreamData.stPcmData.pData = (char *)malloc(frameSize);
+            ASSERT(stStreamData.stPcmData.pData);
+            AudioPcmCopyS16beToS16le(stStreamData.stPcmData.pData, fReceiveBuffer, frameSize);
             if (uConnection == 0)
             {
                 ST_TEM_ATTR stTemAttr;
 
-                rtspObj->Connect(pstClientOutInfo->uintAudioOutPort, &stStreamInfo);
+                rtspObj->Connect(pstClientOutInfo->uintAudioOutPort, &stStreamData.stInfo);
                 PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
                 memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
                 stTemAttr.fpThreadDoSignal = AudioSender;
@@ -488,16 +487,16 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
                 stTemAttr.bSignalResetTimer = 0;
                 stTemAttr.stTemBuf.pTemBuffer = (void *)this;
                 stTemAttr.stTemBuf.u32TemBufferSize = 0;
-                stTemAttr.maxDataCout = stStreamInfo.stPcmInfo.uintBitRate * stStreamInfo.stPcmInfo.uintBitLength * stStreamInfo.stPcmInfo.uintChannelCnt / 16;
+                stTemAttr.maxDataCout = stStreamData.stInfo.stPcmInfo.uintBitRate * stStreamData.stInfo.stPcmInfo.uintBitLength * stStreamData.stInfo.stPcmInfo.uintChannelCnt / 16;
                 stTemAttr.bDropData = TRUE;
                 snprintf(audioSenderName, 40, "rtsp_audio_sender_%d", pstClientOutInfo->uintAudioOutPort);
                 TemOpen(audioSenderName, stTemAttr);
                 uConnection = 2;
             }
             ST_TEM_USER_DATA stUsrData;
-            stUsrData.pUserData = (void *)&stStreamInfo;
-            stUsrData.u32UserDataSize = sizeof(stStreamInfo_t);
-            stUsrData.u32BufferRealSize = stStreamInfo.stPcmInfo.uintDataSize; //add for drop data
+            stUsrData.pUserData = (void *)&stStreamData;
+            stUsrData.u32UserDataSize = sizeof(stStreamData_t);
+            stUsrData.u32BufferRealSize = stStreamData.stPcmData.uintSize; //add for drop data
             TemSend(audioSenderName, stUsrData);
         }
     }
@@ -513,7 +512,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         pIntHolder = (unsigned int *)pCharHolder;
         if (tmpCodecStr == "H264")
         {
-            stStreamInfo.eStreamType = E_STREAM_H264;
+            stStreamData.stInfo.eStreamType = E_STREAM_H264;
             u8NaluType = pCharHolder[0] & 0x1F;
             if ((pCharHolder[1] & 0x80) && (u8NaluType >= 1 && u8NaluType <= 5))
             {
@@ -528,7 +527,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         }
         else if (tmpCodecStr == "H265")
         {
-            stStreamInfo.eStreamType = E_STREAM_H265;
+            stStreamData.stInfo.eStreamType = E_STREAM_H265;
             u8NaluType = (pCharHolder[0] & 0x7E) >> 1;
             if ((pCharHolder[2] & 0x80) && u8NaluType <= 31)
             {
@@ -543,7 +542,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         }
         else
         {
-            printf("not support format [%s]!\n", tmpCodecStr.c_str());
+            AMIGOS_ERR("not support format [%s]!\n", tmpCodecStr.c_str());
             return;
 
         }
@@ -553,24 +552,23 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
 
             pHolder = (unsigned int *)fReceiveBufferTittle;
             pHolder[0] = 0x01000000;
-            rtspObj->Connect(pstClientOutInfo->uintVideoOutPort, &stStreamInfo);
+            rtspObj->Connect(pstClientOutInfo->uintVideoOutPort, &stStreamData.stInfo);
             uConnection = 1;
         }
-        stStreamInfo.stCodecInfo.streamWidth = fSubsession.videoWidth();
-        stStreamInfo.stCodecInfo.streamHeight = fSubsession.videoHeight();
-        //envir() << " Width : " << stStreamInfo.streamWidth << " Height : " << stStreamInfo.streamHeight << " FPS : " << fSubsession.videoFPS();
+        stStreamData.stInfo.stFrameInfo.streamWidth = fSubsession.videoWidth();
+        stStreamData.stInfo.stFrameInfo.streamHeight = fSubsession.videoHeight();
+        //envir() << " Width : " << stStreamData.stInfo.streamWidth << " Height : " << stStreamData.stInfo.streamHeight << " FPS : " << fSubsession.videoFPS();
         //envir() << tmpCodecStr.c_str() << " Buf size " << frameSize << " Buffer : "<< (void *)fReceiveBuffer <<"\n";
 
-        //printf("Get data 0x%x 0x%x 0x%x, 0x%x\n", pCharHolder[0], pCharHolder[1], pCharHolder[2], pCharHolder[3]);
+        //AMIGOS_INFO("Get data 0x%x 0x%x 0x%x, 0x%x\n", pCharHolder[0], pCharHolder[1], pCharHolder[2], pCharHolder[3]);
         if (bFrameEnd || u32MultiSliceOffset + frameSize + 4 > DUMMY_SINK_RECEIVE_BUFFER_SIZE)
         {
-            //printf("Get frame end : slice offset %d\n", u32MultiSliceOffset);
+            //AMIGOS_INFO("Get frame end : slice offset %d\n", u32MultiSliceOffset);
             stEsPackage.pData = (char *)fReceiveBufferTittle;
             stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
-            stStreamInfo.stCodecInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
-            stStreamInfo.stCodecInfo.pDataAddr = &stEsPackage;
-            stStreamInfo.stCodecInfo.uintPackCnt = 1;
-            rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamInfo, sizeof(stStreamInfo_t));
+            stStreamData.stEsData.pDataAddr = &stEsPackage;
+            stStreamData.stEsData.uintPackCnt = 1;
+            rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamData, sizeof(stStreamData_t));
             u32MultiSliceOffset = 0;
         }
         else
@@ -578,13 +576,12 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
             if (bFirstFrame && u32MultiSliceOffset != 0)
             {
                 //Standard multil slice code next first frame triggle prev frame.
-                //printf("Get first frame! slice offset %d current size %d\n", u32MultiSliceOffset, frameSize);
+                //AMIGOS_INFO("Get first frame! slice offset %d current size %d\n", u32MultiSliceOffset, frameSize);
                 stEsPackage.pData = (char *)fReceiveBufferTittle;
                 stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
-                stStreamInfo.stCodecInfo.ullTimeStampUs = presentationTime.tv_sec * 1000000 + presentationTime.tv_usec;
-                stStreamInfo.stCodecInfo.pDataAddr = &stEsPackage;
-                stStreamInfo.stCodecInfo.uintPackCnt = 1;
-                rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamInfo, sizeof(stStreamInfo_t));
+                stStreamData.stEsData.pDataAddr = &stEsPackage;
+                stStreamData.stEsData.uintPackCnt = 1;
+                rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamData, sizeof(stStreamData_t));
                 memcpy(fReceiveBuffer, pCharHolder, frameSize);
                 pCharHolder = fReceiveBuffer;
                 u32MultiSliceOffset = 0;
@@ -611,27 +608,27 @@ Boolean DummySink::continuePlaying() {
 void *DummySink::AudioSender(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
 {
     DummySink *pObj = (DummySink *)stBuf.pTemBuffer;
-    stStreamInfo_t *pstStreamInfo;
+    stStreamData_t *pstStreamData;
 
     ASSERT(pObj);
-    ASSERT(stUsrData.u32UserDataSize == sizeof(stStreamInfo_t));
-    pstStreamInfo = (stStreamInfo_t *)stUsrData.pUserData;
-    pObj->rtspObj->Send(pObj->pstClientOutInfo->uintAudioOutPort, pstStreamInfo, sizeof(stStreamInfo_t));
-    free(pstStreamInfo->stPcmInfo.pData);
-    pstStreamInfo->stPcmInfo.pData = NULL;
+    ASSERT(stUsrData.u32UserDataSize == sizeof(stStreamData_t));
+    pstStreamData = (stStreamData_t *)stUsrData.pUserData;
+    pObj->rtspObj->Send(pObj->pstClientOutInfo->uintAudioOutPort, pstStreamData, sizeof(stStreamData_t));
+    free(pstStreamData->stPcmData.pData);
+    pstStreamData->stPcmData.pData = NULL;
 
     return NULL;
 }
 void *DummySink::AudioSenderEventDrop(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
 {
     DummySink *pObj = (DummySink *)stBuf.pTemBuffer;
-    stStreamInfo_t *pstStreamInfo;
+    stStreamData_t *pstStreamData;
 
     ASSERT(pObj);
-    ASSERT(stUsrData.u32UserDataSize == sizeof(stStreamInfo_t));
-    pstStreamInfo = (stStreamInfo_t *)stUsrData.pUserData;
-    free(pstStreamInfo->stPcmInfo.pData);
-    pstStreamInfo->stPcmInfo.pData = NULL;
+    ASSERT(stUsrData.u32UserDataSize == sizeof(stStreamData_t));
+    pstStreamData = (stStreamData_t *)stUsrData.pUserData;
+    free(pstStreamData->stPcmData.pData);
+    pstStreamData->stPcmData.pData = NULL;
 
     return NULL;
 
@@ -659,7 +656,7 @@ void *Rtsp::ClientMonitor(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
     ASSERT(pSendClass);
     if (sizeof(stRtspClientEvent_t) != stUsrData.u32UserDataSize)
     {
-        printf("Not match!\n");
+        AMIGOS_ERR("Not match!\n");
 
         return NULL;
     }
@@ -668,7 +665,7 @@ void *Rtsp::ClientMonitor(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
     if (pstEvenv->ucharCmd == 0)
     {
         pstOutInfo->pRtspClient = openURL(*pstOutInfo->env, "rtsp", pstEvenv->pstrUrl);
-        printf("Open url client %p\n", pstOutInfo->pRtspClient);
+        AMIGOS_ERR("Open url client %p\n", pstOutInfo->pRtspClient);
     }
     else if (pstEvenv->ucharCmd == 1)
     {
@@ -691,38 +688,38 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
 {
     stRtspDataPackage_t *pstRtspDataPackage = NULL;
     std::map<MI_U32, stRtspDataPackageHead_t>::iterator iter;
-    stStreamInfo_t *pstStream = (stStreamInfo_t *)pData;
+    stStreamData_t *pstStreamData = (stStreamData_t *)pData;
     MI_U32 u32Len = 0;
 
-    ASSERT(pstStream);
-    ASSERT(sizeof(stStreamInfo_t) == dataSize);
+    ASSERT(pstStreamData);
+    ASSERT(sizeof(stStreamData_t) == dataSize);
     pstRtspDataPackage = (stRtspDataPackage_t *)malloc(sizeof(stRtspDataPackage_t));
     ASSERT(pstRtspDataPackage);
     memset(pstRtspDataPackage, 0, sizeof(stRtspDataPackage_t));
-    switch (pstStream->eStreamType)
+    switch (pstStreamData->stInfo.eStreamType)
     {
         case E_STREAM_H264:
         case E_STREAM_H265:
         {
             unsigned int uintNalu = -1;
 
-            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
             {
-                ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-                pstRtspDataPackage->u32DataLen += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
-                if (pstStream->stCodecInfo.pDataAddr[i].bSliceEnd)
+                ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
                 {
                     pstRtspDataPackage->u32DataLen += 8;
                 }
             }
             pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
             ASSERT(pstRtspDataPackage->pDataAddr);
-            uintNalu = (pstStream->eStreamType == E_STREAM_H264) ? 0x5353001E : ((pstStream->eStreamType == E_STREAM_H265) ? 0x5353003C : -1);
-            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            uintNalu = (pstStreamData->stInfo.eStreamType == E_STREAM_H264) ? 0x5353001E : ((pstStreamData->stInfo.eStreamType == E_STREAM_H265) ? 0x5353003C : -1);
+            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
             {
-                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-                u32Len += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
-                if (pstStream->stCodecInfo.pDataAddr[i].bSliceEnd)
+                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
                 {
                     unsigned int *pintHolder = NULL;
 
@@ -735,26 +732,26 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
         break;
         case E_STREAM_JPEG:
         {
-            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
             {
-                ASSERT(pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-                pstRtspDataPackage->u32DataLen += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+                ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
             }
             pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
             ASSERT(pstRtspDataPackage->pDataAddr);
-            for (MI_U8 i = 0; i < pstStream->stCodecInfo.uintPackCnt; i++)
+            for (MI_U8 i = 0; i <pstStreamData->stEsData.uintPackCnt; i++)
             {
-                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStream->stCodecInfo.pDataAddr[i].pData, pstStream->stCodecInfo.pDataAddr[i].uintDataSize);
-                u32Len += pstStream->stCodecInfo.pDataAddr[i].uintDataSize;
+                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
             }
         }
         break;
         case E_STREAM_PCM:
         {
-            pstRtspDataPackage->u32DataLen = pstStream->stPcmInfo.uintDataSize;
-            pstRtspDataPackage->pDataAddr = (void *)malloc(pstStream->stPcmInfo.uintDataSize);
+            pstRtspDataPackage->u32DataLen = pstStreamData->stPcmData.uintSize;
+            pstRtspDataPackage->pDataAddr = (void *)malloc(pstStreamData->stPcmData.uintSize);
             ASSERT(pstRtspDataPackage->pDataAddr);
-            memcpy((char *)pstRtspDataPackage->pDataAddr, pstStream->stPcmInfo.pData, pstStream->stPcmInfo.uintDataSize);
+            memcpy((char *)pstRtspDataPackage->pDataAddr, pstStreamData->stPcmData.pData, pstStreamData->stPcmData.uintSize);
         }
         break;
         default:
@@ -787,10 +784,10 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
             return;
         }
     }
-    //printf("in port id %d type %d addr %p size %d\n", portId, pstStream->eStreamType, stRtspDataPackage.pDataAddr, stRtspDataPackage.u32DataLen);
+    //AMIGOS_INFO("in port id %d type %d addr %p size %d\n", portId, pstStream->eStreamType, stRtspDataPackage.pDataAddr, stRtspDataPackage.u32DataLen);
     if(iter == mapRtspDataPackage.end())
     {
-        printf("Error!!!! input port %d not open!!!\n", portId);
+        AMIGOS_ERR("Error!!!! input port %d not open!!!\n", portId);
         free(pstRtspDataPackage->pDataAddr);
         pstRtspDataPackage->pDataAddr = NULL;
         free(pstRtspDataPackage);
@@ -813,7 +810,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
                 free(pos);
             }
         }
-        printf("Error!!!!Port %d buf pool full!!!!! Maybe client did not close or the network environment is bad.\n", portId);
+        AMIGOS_INFO("Error!!!!Port %d buf pool full!!!!! Maybe client did not close or the network environment is bad.\n", portId);
     }
     pstRtspDataPackage->u32FrmRef = iter->second.uintRefCnt;
     pstRtspDataPackage->u32FrmCnt = ++(iter->second.uintCurFrmCnt);
@@ -831,7 +828,7 @@ MI_S32 Rtsp::TermBufPool(void)
 
     for(itRtspInputInfo = mRtspInputInfo.begin(); itRtspInputInfo != mRtspInputInfo.end(); itRtspInputInfo++)
     {
-        printf("Term input port video %d had pcm %d audio port %d\n", itRtspInputInfo->second.uintVideoInPortId, itRtspInputInfo->second.intHasPcmData, itRtspInputInfo->second.uintAuidioInPortId);
+        AMIGOS_INFO("Term input port video %d had pcm %d audio port %d\n", itRtspInputInfo->second.uintVideoInPortId, itRtspInputInfo->second.intHasPcmData, itRtspInputInfo->second.uintAuidioInPortId);
         pthread_mutex_lock(&stDataMuxCond.mutex);
         iter = mapRtspDataPackage.find(itRtspInputInfo->second.uintVideoInPortId);
         if(iter != mapRtspDataPackage.end())
@@ -857,7 +854,7 @@ MI_S32 Rtsp::TermBufPool(void)
             }
         }
         pthread_mutex_unlock(&stDataMuxCond.mutex);
-        printf("term end!\n");
+        AMIGOS_INFO("term end!\n");
     }
 
     return MI_SUCCESS;
@@ -975,10 +972,10 @@ MI_S32 Rtsp::DequeueBufPool(unsigned int inPort, void *pData, MI_U32 u32Size, st
                     }
                     else
                     {
-                        printf("Data max! ref %d size %d total count %d total ref %d frm ref %d\n", pRef->refId, sizeRet, iter->second.totalCount, iter->second.uintRefCnt, pos->u32FrmRef);
+                        AMIGOS_INFO("Data max! ref %d size %d total count %d total ref %d frm ref %d\n", pRef->refId, sizeRet, iter->second.totalCount, iter->second.uintRefCnt, pos->u32FrmRef);
                         goto EXIT;
                     }
-                    //printf("size %d data_length %d Addr %p total %d ref %d, frm cnt %d refId %d\n", sizeRet, pos->u32DataLen, pos->pDataAddr, iter->second.totalCount, pos->u32FrmRef, pos->u32FrmCnt, pRef->refId);
+                    //AMIGOS_INFO("size %d data_length %d Addr %p total %d ref %d, frm cnt %d refId %d\n", sizeRet, pos->u32DataLen, pos->pDataAddr, iter->second.totalCount, pos->u32FrmRef, pos->u32FrmCnt, pRef->refId);
                     ASSERT(pos->u32FrmRef);
                     pos->u32FrmRef--;
                     pRef->uintDequeueCnt = pos->u32FrmCnt;
@@ -1105,11 +1102,11 @@ MI_S32 Rtsp::GetDataDirect(int chnId, void *pData, MI_U32 u32Maxlen)
                     memcpy((char *)pData + u32Len, stStream.pstPack[i].pu8Addr, stStream.pstPack[i].u32Len);
                     u32Len += stStream.pstPack[i].u32Len;
                 }
-                //printf("Get stream size %d addr %p\n", stStream.pstPack[0].u32Len, stRtspDataPackage.pDataAddr);
+                //AMIGOS_INFO("Get stream size %d addr %p\n", stStream.pstPack[0].u32Len, stRtspDataPackage.pDataAddr);
             }
             else
             {
-                printf("Data too large! limitation %d, cur %d\n", u32Maxlen, u32Size);
+                AMIGOS_INFO("Data too large! limitation %d, cur %d\n", u32Maxlen, u32Size);
             }
             MI_VENC_ReleaseStream((MI_VENC_CHN)chnId, &stStream);
         }
@@ -1203,7 +1200,7 @@ void Rtsp::LoadDb()
                     }
                     else
                     {
-                        printf("Rtsp not support current type of file.\n");
+                        AMIGOS_ERR("Rtsp not support current type of file.\n");
                         ASSERT(0);
                     }
                 }
@@ -1272,7 +1269,7 @@ void Rtsp::Init()
 
             if(rtspServerPortNum > 65535)
             {
-                printf("Failed to create RTSP server: %s\n", pRTSPServer->getResultMsg());
+                AMIGOS_INFO("Failed to create RTSP server: %s\n", pRTSPServer->getResultMsg());
                 delete pRTSPServer;
                 pRTSPServer = NULL;
                 return;
@@ -1368,7 +1365,7 @@ void* Rtsp::OpenStream(char const * szStreamName, void * arg)
 #endif
         }
     }
-    printf("open stream \"%s\" success, in port:%d refcnt %d dequeue cnt %d addr %p\n", szStreamName, pInfo->uintVideoInPortId, stRefInfo.refId, stRefInfo.uintDequeueCnt, &mapVideoStreamRefInfo[stRefInfo.refId]);
+    AMIGOS_INFO("open stream \"%s\" success, in port:%d refcnt %d dequeue cnt %d addr %p\n", szStreamName, pInfo->uintVideoInPortId, stRefInfo.refId, stRefInfo.uintDequeueCnt, &mapVideoStreamRefInfo[stRefInfo.refId]);
 
     return &mapVideoStreamRefInfo[stRefInfo.refId];
 }
@@ -1419,7 +1416,7 @@ void* Rtsp::OpenAudioStream(char const * szStreamName, void * arg)
         }
         pthread_mutex_unlock(&stDataMuxCond.mutex);
     }
-    printf("open audio stream \"%s\" success, in port:%d refcnt %d dequeue cnt %d addr %p\n", szStreamName, pInfo->uintAuidioInPortId, stRefInfo.refId, stRefInfo.uintDequeueCnt, &mapAudioStreamRefInfo[stRefInfo.refId]);
+    AMIGOS_INFO("open audio stream \"%s\" success, in port:%d refcnt %d dequeue cnt %d addr %p\n", szStreamName, pInfo->uintAuidioInPortId, stRefInfo.refId, stRefInfo.uintDequeueCnt, &mapAudioStreamRefInfo[stRefInfo.refId]);
 
     return &mapAudioStreamRefInfo[stRefInfo.refId];
 }
@@ -1442,7 +1439,7 @@ int Rtsp::CloseStream(void *handle, void *arg)
     stRtspRefInfo_t *pRef = (stRtspRefInfo_t *)handle;
     Rtsp *pThisClass = NULL;
 
-    printf("Close video pRef %p refid %d port %d ref %d\n", pRef, pRef->refId, pRef->pstInputInfo->uintVideoInPortId, pRef->pstInputInfo->uintVideoStreamRefCnt);
+    AMIGOS_INFO("Close video pRef %p refid %d port %d ref %d\n", pRef, pRef->refId, pRef->pstInputInfo->uintVideoInPortId, pRef->pstInputInfo->uintVideoStreamRefCnt);
     if (pRef->pstInputInfo->uintVideoStreamRefCnt == 1)
     {
         pThisClass = dynamic_cast<Rtsp *>(pRef->pstInputInfo->pInstance);
@@ -1464,7 +1461,7 @@ int Rtsp::CloseAudioStream(void *handle, void *arg)
     stRtspRefInfo_t *pRef = (stRtspRefInfo_t *)handle;
     Rtsp *pThisClass = NULL;
 
-    printf("Close audio pRef %p refid %d port %d ref %d\n", pRef, pRef->refId, pRef->pstInputInfo->uintAuidioInPortId, pRef->pstInputInfo->uintAudioStreamRefCnt);
+    AMIGOS_INFO("Close audio pRef %p refid %d port %d ref %d\n", pRef, pRef->refId, pRef->pstInputInfo->uintAuidioInPortId, pRef->pstInputInfo->uintAudioStreamRefCnt);
     if (pRef->pstInputInfo->uintAudioStreamRefCnt == 1)
     {
         pThisClass = dynamic_cast<Rtsp *>(pRef->pstInputInfo->pInstance);
@@ -1488,8 +1485,8 @@ void Rtsp::BindBlock(stModInputInfo_t & stIn)
     stModDesc_t stPreDesc;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    printf("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    AMIGOS_INFO("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
 }
 
@@ -1502,25 +1499,25 @@ void Rtsp::Start()
     std::map<unsigned int, stModOutputInfo_t>::iterator itMapOutput;
     std::vector<stModIoInfo_t>::iterator itVectIo;
 
-    printf("======Mod %s dump in!======\n", stModDesc.modKeyString.c_str());
+    AMIGOS_INFO("======Mod %s dump in!======\n", stModDesc.modKeyString.c_str());
     for (itMapOutput = mapModOutputInfo.begin(); itMapOutput != mapModOutputInfo.end(); ++itMapOutput)
     {
-        printf("OutKey %s port %d frm %d\n", itMapOutput->second.curIoKeyString.c_str(), itMapOutput->second.curPortId, itMapOutput->second.curFrmRate);
+        AMIGOS_INFO("OutKey %s port %d frm %d\n", itMapOutput->second.curIoKeyString.c_str(), itMapOutput->second.curPortId, itMapOutput->second.curFrmRate);
         for (itVectIo = itMapOutput->second.vectNext.begin(); itVectIo != itMapOutput->second.vectNext.end(); ++itVectIo)
         {
-            printf("Next mod %s port %d frm %d\n", itVectIo->modKeyString.c_str(), itVectIo->portId, itVectIo->frmRate);
+            AMIGOS_INFO("Next mod %s port %d frm %d\n", itVectIo->modKeyString.c_str(), itVectIo->portId, itVectIo->frmRate);
         }
     }
-    printf("======Mod %s dump out!=====\n", stModDesc.modKeyString.c_str());
+    AMIGOS_INFO("======Mod %s dump out!=====\n", stModDesc.modKeyString.c_str());
 #endif
     std::map<std::string, stRtspInputInfo_t>::iterator itMapRtspInfo;
 
     for (itMapRtspInfo = mRtspInputInfo.begin(); itMapRtspInfo != mRtspInputInfo.end(); ++itMapRtspInfo)
     {
         urlPrefix = pRTSPServer->rtspURLPrefix();
-        printf("=================URL===================\n");
-        printf("%s%s\n", urlPrefix, itMapRtspInfo->first.c_str());
-        printf("=================URL===================\n");
+        AMIGOS_INFO("=================URL===================\n");
+        AMIGOS_INFO("%s%s\n", urlPrefix, itMapRtspInfo->first.c_str());
+        AMIGOS_INFO("=================URL===================\n");
 
         pRTSPServer->createServerMediaSession(itMapRtspInfo->second.mediaSession,
                                               itMapRtspInfo->first.c_str(),
@@ -1657,7 +1654,7 @@ void Rtsp::Stop()
         std::map<std::string, stRtspOutInfo_t>::iterator itMapRtspOut;
         for (itMapRtspOut = mapUrlToOutInfo.begin(); itMapRtspOut != mapUrlToOutInfo.end(); itMapRtspOut++)
         {
-            printf("first %s stop url client %p\n", itMapRtspOut->first.c_str(), itMapRtspOut->second.pRtspClient);
+            AMIGOS_INFO("first %s stop url client %p\n", itMapRtspOut->first.c_str(), itMapRtspOut->second.pRtspClient);
             itMapRtspOut->second.env->taskScheduler().scheduleDelayedTask(1, (TaskFunc*)streamByeBye, itMapRtspOut->second.pRtspClient);
         }
         for (itMapRtspOut = mapUrlToOutInfo.begin(); itMapRtspOut != mapUrlToOutInfo.end(); itMapRtspOut++)
@@ -1691,8 +1688,8 @@ void Rtsp::UnBindBlock(stModInputInfo_t &stIn)
     stModDesc_t stPreDesc;
 
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
-    printf("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
-    printf("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
+    AMIGOS_INFO("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
+    AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 }
 
 void Rtsp::Deinit()
