@@ -159,7 +159,7 @@ void Venc::Init()
     }
     Venc_CreateChannel((MI_VENC_CHN)stModDesc.chnId, &stChnAttr);
     MI_VENC_GetChnDevid((MI_VENC_CHN)stModDesc.chnId, &stModDesc.devId);
-    if ((stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE)
+    if ((stVencInfo.intMultiSlice != -1) ? stVencInfo.intMultiSlice : FALSE)
     {
         switch (stVencInfo.intEncodeType)
         {
@@ -181,6 +181,7 @@ void Venc::Init()
                 break;
         }
     }
+
 #ifndef SSTAR_CHIP_I2
     MI_VENC_InputSourceConfig_t stVenInSrc;
     MI_SYS_BindType_e eBindType = E_MI_SYS_BIND_TYPE_FRAME_BASE;
