@@ -43,7 +43,7 @@ std::map<std::string, unsigned int> Sys::connectIdMap;
 std::vector<Sys *> Sys::connectOrder;
 dictionary * Sys::m_pstDict = NULL;
 pthread_mutex_t Sys::gstUsrMutex = PTHREAD_MUTEX_INITIALIZER;
-std::map<unsigned int, E_SYS_MODULE_TYPE> Sys::mapSysModuleType;
+std::map<unsigned int, unsigned int> Sys::mapSysModuleType;
 
 typedef struct stSys_BindInfo_s
 {
@@ -326,7 +326,6 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
         return;
     }
     dstObj->UnBindBlock(dstObj->mapModInputInfo[dstInPort]);
-    srcObj->mapModOutputInfo[srcOutPort].vectNext.erase(srcObj->mapModOutputInfo[srcOutPort].vectNext.begin() + i);
     if (srcObj->mapRecevier.find(srcOutPort) != srcObj->mapRecevier.end())
     {
 
@@ -338,13 +337,16 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
             AMIGOS_INFO("Recevier exist! in port %d recv %p\n", pstReceiverPortDesc->portId, pstReceiverPortDesc->fpRec);
         }
         pthread_mutex_unlock(&srcObj->mapRecevier[srcOutPort].stDeliveryMutex);
-        if (stReceiverPortDesc.bStart)
+        if (pstReceiverPortDesc)
         {
-            dstObj->StopReceiver(dstInPort);
+            if (stReceiverPortDesc.bStart)
+            {
+                dstObj->StopReceiver(dstInPort);
+            }
+            dstObj->DestroyReceiver(dstInPort);
         }
-        dstObj->DestroyReceiver(dstInPort);
     }
-
+    srcObj->mapModOutputInfo[srcOutPort].vectNext.erase(srcObj->mapModOutputInfo[srcOutPort].vectNext.begin() + i);
     dstObj->mapModInputInfo[dstInPort].stPrev.modKeyString = srcObjNew->stModDesc.modKeyString;
     dstObj->mapModInputInfo[dstInPort].stPrev.portId = srcOutPortNew;
     dstObj->mapModInputInfo[dstInPort].stPrev.frmRate = srcObjNew->mapModOutputInfo[srcOutPortNew].curFrmRate;
@@ -352,8 +354,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
     stIoInfo.portId = dstInPort;
     stIoInfo.frmRate = dstObj->mapModInputInfo[dstInPort].curFrmRate;
     srcObjNew->mapModOutputInfo[srcOutPortNew].vectNext.push_back(stIoInfo);
-    if (dstObj->stModDesc.modId > E_SYS_MOD_EXT
-        && pstReceiverPortDesc)
+    if (pstReceiverPortDesc)
     {
         dstObj->CreateReceiver(dstInPort, pstReceiverPortDesc->fpRec, pstReceiverPortDesc->pUsrData);
         if (pstReceiverPortDesc->bStart)
@@ -362,6 +363,7 @@ void Sys::SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsign
         }
     }
     dstObj->BindBlock(dstObj->mapModInputInfo[dstInPort]);
+
 }
 void Sys::Extract(std::vector<Sys *> &objVect)
 {
@@ -448,32 +450,31 @@ void Sys::Insert(std::vector<Sys *> &objVect)
 }
 void Sys::SetupModuleType()
 {
-    mapSysModuleType[E_SYS_MOD_DISP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_VDEC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_VPE] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_VIF] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_DIVP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_VDISP] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_LDC] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-    mapSysModuleType[E_SYS_MOD_AO] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
-
-    mapSysModuleType[E_SYS_MOD_DLA] = E_STREAM_OUT_DATA_IN_USER_MODULE;
-    mapSysModuleType[E_SYS_MOD_FDFR] = E_STREAM_OUT_DATA_IN_USER_MODULE;
-    mapSysModuleType[E_SYS_MOD_UI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
-    mapSysModuleType[E_SYS_MOD_FILE] = E_STREAM_OUT_DATA_IN_USER_MODULE;
-    mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_DISP] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VENC] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VDEC] = E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VPE] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VIF] = E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_DIVP] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_VDISP] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_LDC] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_AI] = E_STREAM_OUT_DATA_IN_USER_MODULE;
-    mapSysModuleType[E_SYS_MOD_RTSP] = E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_AO] = E_STREAM_IN_DATA_IN_USER_MODULE;
+
+    mapSysModuleType[E_SYS_MOD_DLA] = E_STREAM_IN_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_FDFR] = E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_UI] = E_STREAM_IN_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_FILE] = E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_RTSP] = E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
 
 #ifndef SSTAR_CHIP_I2
-    mapSysModuleType[E_SYS_MOD_SNR] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_SNR] = 0;
 #endif
-    mapSysModuleType[E_SYS_MOD_SIGNAL_MONITOR] = E_STREAM_NO_OUT_DATA_MODULE;
-    mapSysModuleType[E_SYS_MOD_IQ] = E_STREAM_NO_OUT_DATA_MODULE;
-    mapSysModuleType[E_SYS_MOD_SLOT] = E_STREAM_NO_OUT_DATA_MODULE;
-    mapSysModuleType[E_SYS_MOD_UAC] = E_STREAM_NO_OUT_DATA_MODULE;
-    mapSysModuleType[E_SYS_MOD_UVC] = E_STREAM_NO_OUT_DATA_MODULE;
+    mapSysModuleType[E_SYS_MOD_SIGNAL_MONITOR] = 0;
+    mapSysModuleType[E_SYS_MOD_IQ] = 0;
+    mapSysModuleType[E_SYS_MOD_SLOT] = 0;
+    mapSysModuleType[E_SYS_MOD_UAC] = E_STREAM_IN_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_UVC] = E_STREAM_IN_DATA_IN_USER_MODULE;
 }
 void Sys::CreateConnection()
 {
@@ -643,9 +644,9 @@ void Sys::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
     stBindInfo.stDstChnPort.u32ChnId = stModDesc.chnId;
     stBindInfo.stDstChnPort.u32PortId = stIn.curPortId;
 #ifndef SSTAR_CHIP_I2
-	MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
+    MI_SYS_BindChnPort2(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate, stBindInfo.eBindType, stBindInfo.u32BindParam);
 #else
-	MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
+    MI_SYS_BindChnPort(&stBindInfo.stSrcChnPort, &stBindInfo.stDstChnPort, stBindInfo.u32SrcFrmrate, stBindInfo.u32DstFrmrate);
 #endif
 }
 void Sys::PrevExtUnBind(stModInputInfo_t & stIn)
@@ -679,13 +680,20 @@ void Sys::BindBlock(stModInputInfo_t &stIn)
     AMIGOS_INFO("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
     AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
-    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
+    if ((mapSysModuleType[stModDesc.modId] & E_STREAM_IN_DATA_IN_KERNEL_MODULE)
+        && (mapSysModuleType[stPreDesc.modId] & E_STREAM_OUT_DATA_IN_KERNEL_MODULE))
+    {
+        PrevIntBind(stIn, stPreDesc);
+    }
+    else if ((mapSysModuleType[stModDesc.modId] & E_STREAM_IN_DATA_IN_USER_MODULE)
+        && (mapSysModuleType[stPreDesc.modId] & E_STREAM_OUT_DATA_IN_USER_MODULE))
     {
         PrevExtBind(stIn);
     }
-    else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
+    else
     {
-        PrevIntBind(stIn, stPreDesc);
+        AMIGOS_INFO("Error bind solution!\n");
+        ASSERT(0);
     }
 }
 void Sys::UnBindBlock(stModInputInfo_t &stIn)
@@ -696,13 +704,20 @@ void Sys::UnBindBlock(stModInputInfo_t &stIn)
     AMIGOS_INFO("UnBind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
     AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
 
-    if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_USER_MODULE)
+    if ((mapSysModuleType[stModDesc.modId] & E_STREAM_IN_DATA_IN_KERNEL_MODULE)
+        && (mapSysModuleType[stPreDesc.modId] & E_STREAM_OUT_DATA_IN_KERNEL_MODULE))
+    {
+        PrevIntUnBind(stIn, stPreDesc);
+    }
+    else if ((mapSysModuleType[stModDesc.modId] & E_STREAM_IN_DATA_IN_USER_MODULE)
+        && (mapSysModuleType[stPreDesc.modId] & E_STREAM_OUT_DATA_IN_USER_MODULE))
     {
         PrevExtUnBind(stIn);
     }
-    else if (mapSysModuleType[stPreDesc.modId] == E_STREAM_OUT_DATA_IN_KERNEL_MODULE)
+    else
     {
-        PrevIntUnBind(stIn, stPreDesc);
+        AMIGOS_INFO("Error unbind solution!\n");
+        ASSERT(0);
     }
 }
 
@@ -1085,6 +1100,10 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
     {
         case E_SYS_MOD_VPE:
         case E_SYS_MOD_DIVP:
+        case E_SYS_MOD_VDISP:
+        case E_SYS_MOD_LDC:
+        case E_SYS_MOD_VIF:
+        case E_SYS_MOD_VDEC:
         {
             s32Ret = MI_SYS_GetFd(&stChnOutputPort, &s32Fd);
             if (s32Ret < 0)
@@ -1171,7 +1190,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             s32Fd = MI_VENC_GetFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
             if (s32Fd < 0)
             {
-                return 0;
+                return NULL;
             }
 
             FD_ZERO(&read_fds);
@@ -1354,7 +1373,7 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                     unsigned int i=0;
                     MI_U64 u64Pts = 0;
                     MI_VDEC_VideoStream_t stVdecStream;
-                    for(i=0; i<pStreamData->stEsData.uintPackCnt;i++)
+                    for(i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
                     {
                         memset(&stVdecStream, 0x0, sizeof(stVdecStream));
                         stVdecStream.pu8Addr = (MI_U8*)pStreamData->stEsData.pDataAddr[i].pData;

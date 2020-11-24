@@ -106,9 +106,10 @@ typedef enum
 
 typedef enum
 {
-    E_STREAM_OUT_DATA_IN_KERNEL_MODULE,
-    E_STREAM_OUT_DATA_IN_USER_MODULE,
-    E_STREAM_NO_OUT_DATA_MODULE
+    E_STREAM_IN_DATA_IN_KERNEL_MODULE = 0x1,
+    E_STREAM_IN_DATA_IN_USER_MODULE = 0x2,
+    E_STREAM_OUT_DATA_IN_KERNEL_MODULE = 0x4,
+    E_STREAM_OUT_DATA_IN_USER_MODULE = 0x8,
 }E_SYS_MODULE_TYPE;
 
 typedef struct stSenderState_s
@@ -231,9 +232,9 @@ typedef enum
     E_SYS_MOD_AI = E_MI_MODULE_ID_AI,
     E_SYS_MOD_AO = E_MI_MODULE_ID_AO,
 #ifndef SSTAR_CHIP_I2
-	E_SYS_MOD_SNR = E_MI_MODULE_ID_SNR,
+    E_SYS_MOD_SNR = E_MI_MODULE_ID_SNR,
 #endif
-	E_SYS_MOD_INT_MAX = E_MI_MODULE_ID_MAX,
+    E_SYS_MOD_INT_MAX = E_MI_MODULE_ID_MAX,
     E_SYS_MOD_SIGNAL_MONITOR,
     E_SYS_MOD_IQ,
     E_SYS_MOD_SLOT,
@@ -342,7 +343,7 @@ class Sys
         static int GetIniInt(std::string section, std::string key, int intDefault = -1);
         static unsigned int GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault = -1);
         static char *GetIniString(std::string section, std::string key, char *pDefaultStr = NULL);
-        static std::map<unsigned int, E_SYS_MODULE_TYPE> mapSysModuleType;
+        static std::map<unsigned int, unsigned int> mapSysModuleType;
 
         std::map<unsigned int, stModInputInfo_t> mapModInputInfo;
         std::map<unsigned int, stModOutputInfo_t> mapModOutputInfo;
