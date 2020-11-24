@@ -79,14 +79,6 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
         {
 #ifndef SSTAR_CHIP_I2
             memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
-            if (itVdecOut->uintDecOutWidth > pInfo->stCodecInfo.streamWidth)
-            {
-                itVdecOut->uintDecOutWidth = pInfo->stCodecInfo.streamWidth;
-            }
-            if (itVdecOut->uintDecOutHeight > pInfo->stCodecInfo.streamHeight)
-            {
-                itVdecOut->uintDecOutHeight = pInfo->stCodecInfo.streamHeight;
-            }
             stOutputPortAttr.u16Width = itVdecOut->uintDecOutWidth;
             stOutputPortAttr.u16Height = itVdecOut->uintDecOutHeight;
             MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
