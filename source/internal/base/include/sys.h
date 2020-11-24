@@ -288,8 +288,14 @@ class Sys
         Sys()
         {
             gstSwitchSrcMutex = PTHREAD_MUTEX_INITIALIZER;
+            pRecvEsBuffer = NULL;
+            uintRecvEsBufferSize = 0;
         }
-        virtual ~Sys(){}
+        virtual ~Sys()
+        {
+            if (pRecvEsBuffer)
+                free(pRecvEsBuffer);
+        }
         static void InitSys(std::string strIniPath, std::map<std::string, unsigned int> &mapModId);
         static void DeinitSys();
         static void CreateObj(std::string strIniPath, std::map<std::string, unsigned int> &mapModId);
@@ -392,6 +398,8 @@ class Sys
         static std::map<std::string, unsigned int> connectIdMap;
         static dictionary *m_pstDict;
         static pthread_mutex_t gstUsrMutex;
+        char *pRecvEsBuffer;
+        unsigned int uintRecvEsBufferSize;
 };
 
 #endif

@@ -1370,22 +1370,66 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
 
                 if(modId == E_SYS_MOD_VDEC)
                 {
-                    unsigned int i=0;
                     MI_U64 u64Pts = 0;
                     MI_VDEC_VideoStream_t stVdecStream;
-                    for(i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
+
+                    if (!pStreamData->stEsData.uintPackCnt)
+                    {
+                        return;
+                    }
+                    if (pStreamData->stEsData.uintPackCnt == 1
+                        && pStreamData->stEsData.pDataAddr[0].bSliceEnd
+                        && pInstance->uintRecvEsBufferSize == 0)
                     {
                         memset(&stVdecStream, 0x0, sizeof(stVdecStream));
-                        stVdecStream.pu8Addr = (MI_U8*)pStreamData->stEsData.pDataAddr[i].pData;
-                        stVdecStream.u32Len = pStreamData->stEsData.pDataAddr[i].uintDataSize;
+                        stVdecStream.pu8Addr = (MI_U8*)pStreamData->stEsData.pDataAddr[0].pData;
+                        stVdecStream.u32Len = pStreamData->stEsData.pDataAddr[0].uintDataSize;
                         stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
                         stVdecStream.bEndOfFrame = 1;
                         stVdecStream.bEndOfStream = 0;
-                        //printf("Addr %p len %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len);
+                        //AMIGOS_INFO("Addr %p len %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len);
                         s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
                         if (MI_SUCCESS != s32Ret)
                         {
                             AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                        }
+                    }
+                    else
+                    {
+                        char *pTempBuffer = NULL;
+                        unsigned int i = 0;
+
+                        if (!pInstance->pRecvEsBuffer)
+                        {
+                            pInstance->pRecvEsBuffer = (char *)malloc(1024 * 1024);
+                            ASSERT(pInstance->pRecvEsBuffer);
+                        }
+                        for(i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
+                        {
+                            if (pInstance->uintRecvEsBufferSize + pStreamData->stEsData.pDataAddr[i].uintDataSize > 1024 * 1024)
+                            {
+                                pInstance->uintRecvEsBufferSize = 0;
+                            }
+                            //AMIGOS_INFO("Copy %p data size %d\n", pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                            pTempBuffer = pInstance->pRecvEsBuffer + pInstance->uintRecvEsBufferSize;
+                            memcpy(pTempBuffer, pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                            pInstance->uintRecvEsBufferSize += pStreamData->stEsData.pDataAddr[i].uintDataSize;
+                            if (pStreamData->stEsData.pDataAddr[i].bSliceEnd)
+                            {
+                                memset(&stVdecStream, 0x0, sizeof(stVdecStream));
+                                stVdecStream.pu8Addr = (MI_U8*)pInstance->pRecvEsBuffer;
+                                stVdecStream.u32Len = pInstance->uintRecvEsBufferSize;
+                                stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
+                                stVdecStream.bEndOfFrame = 1;
+                                stVdecStream.bEndOfStream = 0;
+                                //AMIGOS_INFO("Send Addr %p len %d id %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len, i);
+                                s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
+                                if (MI_SUCCESS != s32Ret)
+                                {
+                                    AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                                }
+                                pInstance->uintRecvEsBufferSize = 0;
+                            }
                         }
                     }
                 }

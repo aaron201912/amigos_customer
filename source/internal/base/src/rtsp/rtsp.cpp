@@ -543,8 +543,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         else
         {
             AMIGOS_ERR("not support format [%s]!\n", tmpCodecStr.c_str());
-            return;
 
+            return;
         }
         if (uConnection == 0)
         {
@@ -566,6 +566,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
             //AMIGOS_INFO("Get frame end : slice offset %d\n", u32MultiSliceOffset);
             stEsPackage.pData = (char *)fReceiveBufferTittle;
             stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
+            stEsPackage.bSliceEnd = TRUE;
             stStreamData.stEsData.pDataAddr = &stEsPackage;
             stStreamData.stEsData.uintPackCnt = 1;
             rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamData, sizeof(stStreamData_t));
@@ -579,6 +580,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
                 //AMIGOS_INFO("Get first frame! slice offset %d current size %d\n", u32MultiSliceOffset, frameSize);
                 stEsPackage.pData = (char *)fReceiveBufferTittle;
                 stEsPackage.uintDataSize = u32MultiSliceOffset + 4;
+                stEsPackage.bSliceEnd = TRUE;
                 stStreamData.stEsData.pDataAddr = &stEsPackage;
                 stStreamData.stEsData.uintPackCnt = 1;
                 rtspObj->Send(pstClientOutInfo->uintVideoOutPort, &stStreamData, sizeof(stStreamData_t));
