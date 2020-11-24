@@ -507,13 +507,13 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
 
         pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
         pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
+        Sys::Insert(*pstPackage->pVectVideoPipeLine);
+        printf("Insert video done !\n");
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
         printf("Switch source done !\n");
-        Sys::Insert(*pstPackage->pVectVideoPipeLine);
-        printf("Insert video done !\n");
         Sys::Extract(*pstPackage->pVectNoSignalVideoPipeLine);
         printf("Release file done !\n");
 
@@ -521,16 +521,16 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
     else if (pstPackage->enCurState == E_RS3_STATUS_ENMIPIOUT && enTcState != E_RS3_STATUS_ENMIPIOUT)
     {
         ES8156_Deinit();
+        printf("Signal unlock %d\n", enTcState);
         pSrcOb = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
         pSrcObNew = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
+        Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
+        printf("Insert source ok !\n");
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
         Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
         printf("Switch source done !\n");
-        Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
-        printf("Insert source ok !\n");
-        printf("Signal unlock %d\n", enTcState);
         Sys::Extract(*pstPackage->pVectVideoPipeLine);
         printf("Release video done !\n");
     }
