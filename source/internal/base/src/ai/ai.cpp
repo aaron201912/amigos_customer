@@ -65,7 +65,8 @@ void Ai::Init()
     stChnOutputPort.u32ChnId = stModDesc.chnId;
     stChnOutputPort.u32PortId = 0;
     MI_SYS_SetChnOutputPortDepth(&stChnOutputPort, 8, 8);
-    mapModOutputInfo[0].stStreanInfo.eStreamType = E_STREAM_PCM;
+    mapModOutputInfo[0].stStreanInfo.eStreamType = E_STREAM_AUDIO_CODEC_DATA;
+    mapModOutputInfo[0].stStreanInfo.stPcmInfo.enAudioCodecFmt = E_STREAM_PCM;
     mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitRate = stAiInfo.uintSampleRate;
     mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintBitLength = stAiInfo.uintBitWidth;
     mapModOutputInfo[0].stStreanInfo.stPcmInfo.uintChannelCnt = stAiInfo.uintChannelCnt;

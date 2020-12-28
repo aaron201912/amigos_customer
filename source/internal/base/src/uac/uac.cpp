@@ -56,7 +56,7 @@ void Uac::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
     pStreamData = (stStreamData_t*)pData;
     if (portId == 0)
     {
-        ASSERT(pStreamData->stInfo.eStreamType == E_STREAM_PCM);
+        ASSERT(pStreamData->stInfo.eStreamType == E_STREAM_AUDIO_CODEC_DATA);
         //Uac do send pcm data.
     }
     else

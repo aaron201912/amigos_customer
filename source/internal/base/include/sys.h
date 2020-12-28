@@ -38,9 +38,8 @@
 #define YUYV_BLUE               MAKE_YUYV_VALUE(29,225,107)
 #define ALIGN16_DOWN(x) (x&0xFFF0)
 
-#define AMIGOS_INFO(fmt, args...) printf("[AMI_INFO][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);
-#define AMIGOS_ERR(fmt, args...) printf("[AMI_ERR][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);
-
+#define AMIGOS_INFO(fmt, args...) printf("\033[1;32m[AMI_INFO][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);printf("\033[0m");
+#define AMIGOS_ERR(fmt, args...) printf("\033[1;31m[AMI_ERR][%s][%d]", __FUNCTION__, __LINE__);printf(fmt, ##args);printf("\033[0m")
 
 #ifndef ExecFunc
 #define ExecFunc(_func_, _ret_) \
@@ -88,20 +87,39 @@ typedef enum
 {
     E_STREAM_YUV422 = E_MI_SYS_PIXEL_FRAME_YUV422_YUYV,
 #ifndef SSTAR_CHIP_I2
-	E_STREAM_ARGB8888 = E_MI_SYS_PIXEL_FRAME_ARGB8888,
+    E_STREAM_YUV422_UYVY = E_MI_SYS_PIXEL_FRAME_YUV422_UYVY,
+    E_STREAM_YUV422_YVYU = E_MI_SYS_PIXEL_FRAME_YUV422_YVYU,
+    E_STREAM_YUV422_VYUY = E_MI_SYS_PIXEL_FRAME_YUV422_VYUY,
+    E_STREAM_ARGB8888 = E_MI_SYS_PIXEL_FRAME_ARGB8888,
     E_STREAM_ABGR8888 = E_MI_SYS_PIXEL_FRAME_ABGR8888,
     E_STREAM_BGRA8888 = E_MI_SYS_PIXEL_FRAME_BGRA8888,
 #endif
-	E_STREAM_YUV420 = E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420,
-    E_STREAM_H264,
-    E_STREAM_H265,
-    E_STREAM_JPEG,
-    E_STREAM_PCM,
+    E_STREAM_YUV420 = E_MI_SYS_PIXEL_FRAME_YUV_SEMIPLANAR_420,
 #ifndef SSTAR_CHIP_I2
-	E_STREAM_RGB_BAYER_BASE = E_MI_SYS_PIXEL_FRAME_RGB_BAYER_BASE,
+    E_STREAM_RGB_BAYER_BASE = E_MI_SYS_PIXEL_FRAME_RGB_BAYER_BASE,
     E_STREAM_RGB_BAYER_MAX = E_MI_SYS_PIXEL_FRAME_RGB_BAYER_NUM,
 #endif
     E_STREAM_MAX = E_MI_SYS_PIXEL_FRAME_FORMAT_MAX,
+}E_VIDEO_RAW_FORMAT;
+
+typedef enum
+{
+    E_STREAM_H264 = 12,
+    E_STREAM_H265 = 13,
+    E_STREAM_JPEG = 14,
+}E_VIDEO_CODEC_FORMAT;
+
+typedef enum
+{
+    E_STREAM_PCM,
+    E_STREAM_AAC
+}E_AUDIO_CODEC_FORMAT;
+
+typedef enum
+{
+    E_STREAM_VIDEO_RAW_DATA,
+    E_STREAM_VIDEO_CODEC_DATA,
+    E_STREAM_AUDIO_CODEC_DATA
 }E_STREAM_TYPE;
 
 typedef enum
@@ -154,14 +172,23 @@ typedef struct stYuvSpData_s
     char *pUvDataAddr;
 }stYuvSpData_t;
 
+typedef struct stVideoEsInfo_s
+{
+    E_VIDEO_CODEC_FORMAT enVideoCodecFmt;
+    unsigned int streamWidth;
+    unsigned int streamHeight;
+}stVideoEsInfo_t;
+
 typedef struct stVideoFrameInfo_s
 {
+    E_VIDEO_RAW_FORMAT enVideoRawFmt;
     unsigned int streamWidth;
     unsigned int streamHeight;
 }stVideoFrameInfo_t;
 
 typedef struct stPcmInfo_s
 {
+    E_AUDIO_CODEC_FORMAT enAudioCodecFmt;
     unsigned int uintBitRate;
     unsigned int uintBitLength;
     unsigned int uintChannelCnt;
@@ -172,8 +199,9 @@ typedef struct stStreamInfo_s
     E_STREAM_TYPE eStreamType;    
     union
     {
-       stVideoFrameInfo_t stFrameInfo; 
-       stPcmInfo_t stPcmInfo;
+        stVideoFrameInfo_t stFrameInfo;
+        stVideoEsInfo_t stEsInfo;
+        stPcmInfo_t stPcmInfo;
     };
 }stStreamInfo_t;
 typedef struct stStreamData_s
@@ -206,6 +234,10 @@ typedef struct stModInputInfo_s
     std::string curIoKeyString;
     unsigned int curPortId;
     unsigned int curFrmRate;
+#ifndef SSTAR_CHIP_I2
+    unsigned int bindType;
+    unsigned int bindPara;
+#endif
     stModIoInfo_t stPrev;
 }stModInputInfo_t;
 typedef struct stModOutputInfo_s

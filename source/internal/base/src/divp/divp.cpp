@@ -50,7 +50,8 @@ void Divp::LoadDb()
         //AMIGOS_INFO("%s : VID_H %d\n", itDivpOut->second.curIoKeyString.c_str(), stDivpOutInfo.intDivpOutHeight);
         stDivpOutInfo.intPortId = itMapDivpOut->second.curPortId;
         vDivpOutInfo.push_back(stDivpOutInfo);
-        itMapDivpOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stDivpOutInfo.intDivpOutFmt;
+        itMapDivpOut->second.stStreanInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+        itMapDivpOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)stDivpOutInfo.intDivpOutFmt;
         itMapDivpOut->second.stStreanInfo.stFrameInfo.streamWidth = stDivpOutInfo.intDivputWidth;
         itMapDivpOut->second.stStreanInfo.stFrameInfo.streamHeight = stDivpOutInfo.intDivpOutHeight;
     }

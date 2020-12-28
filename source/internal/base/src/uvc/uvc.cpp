@@ -54,11 +54,11 @@ void Uvc::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
     ASSERT(dataSize == sizeof(stStreamData_t));
     pThisClass = dynamic_cast<Uvc *>((Sys *)pUsrData);;
     pStreamData = (stStreamData_t*)pData;
-    if (portId == 0 && (pStreamData->stInfo.eStreamType == E_STREAM_H264 || pStreamData->stInfo.eStreamType == E_STREAM_H265 || pStreamData->stInfo.eStreamType == E_STREAM_JPEG))
+    if (portId == 0 && (pStreamData->stInfo.eStreamType == E_STREAM_VIDEO_CODEC_DATA))
     {
         //Uvc do send es data.
     }
-    else if (portId == 1 && (pStreamData->stInfo.eStreamType == E_STREAM_YUV422 || pStreamData->stInfo.eStreamType == E_STREAM_YUV420))
+    else if (portId == 1 && (pStreamData->stInfo.eStreamType == E_STREAM_VIDEO_RAW_DATA))
     {
         //uvc send yuv data
     }

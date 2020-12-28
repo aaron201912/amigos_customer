@@ -40,30 +40,16 @@ void Vif::LoadDb()
 
     for(itMapOut = mapModOutputInfo.begin(); itMapOut != mapModOutputInfo.end(); itMapOut++)
     {
-        mapVifOutInfo[itMapOut->second.curPortId].intIsUseSnrFmt = GetIniInt(itMapOut->second.curIoKeyString, "USE_SNR_FMT", 1);
+        mapVifOutInfo[itMapOut->second.curPortId].intIsUseSnrFmt = GetIniInt(itMapOut->second.curIoKeyString, "USE_SNR_FMT");
         if (!mapVifOutInfo[itMapOut->second.curPortId].intIsUseSnrFmt)
         {
             mapVifOutInfo[itMapOut->second.curPortId].intUserFormat = GetIniInt(itMapOut->second.curIoKeyString, "USER_FMT");
             mapVifOutInfo[itMapOut->second.curPortId].intWidth = GetIniInt(itMapOut->second.curIoKeyString, "VID_W");
             mapVifOutInfo[itMapOut->second.curPortId].intHeight = GetIniInt(itMapOut->second.curIoKeyString, "VID_H");
-            if (itMapOut->second.stStreanInfo.eStreamType >= E_STREAM_RGB_BAYER_BASE && itMapOut->second.stStreanInfo.eStreamType <= E_STREAM_RGB_BAYER_MAX)
-            {
-                itMapOut->second.stStreanInfo.stFrameInfo.streamWidth = mapVifOutInfo[itMapOut->second.curPortId].intWidth;
-                itMapOut->second.stStreanInfo.stFrameInfo.streamHeight = mapVifOutInfo[itMapOut->second.curPortId].intHeight;
-            }
-            else
-            {
-                switch (itMapOut->second.stStreanInfo.eStreamType)
-                {
-                    case E_STREAM_YUV422:
-                    case E_STREAM_YUV420:
-                        itMapOut->second.stStreanInfo.stFrameInfo.streamWidth = mapVifOutInfo[itMapOut->second.curPortId].intWidth;
-                        itMapOut->second.stStreanInfo.stFrameInfo.streamHeight = mapVifOutInfo[itMapOut->second.curPortId].intHeight;
-                        break;
-                    default:
-                        ASSERT(0);
-                }
-            }
+            itMapOut->second.stStreanInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+            itMapOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)mapVifOutInfo[itMapOut->second.curPortId].intUserFormat;
+            itMapOut->second.stStreanInfo.stFrameInfo.streamWidth = mapVifOutInfo[itMapOut->second.curPortId].intWidth;
+            itMapOut->second.stStreanInfo.stFrameInfo.streamHeight = mapVifOutInfo[itMapOut->second.curPortId].intHeight;
         }
         else
         {

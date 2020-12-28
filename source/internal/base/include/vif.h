@@ -39,8 +39,8 @@ class Vif: public Sys
         virtual ~Vif();
         void GetInfo(stVifInfo_t &info, std::map<unsigned int, stVifOutInfo_t> &out)
         {
-           info = stVifInfo;
-           out = mapVifOutInfo;
+            info = stVifInfo;
+            out = mapVifOutInfo;
         }
         void UpdateInfo(stVifInfo_t &info, std::map<unsigned int, stVifOutInfo_t> &out)
         {

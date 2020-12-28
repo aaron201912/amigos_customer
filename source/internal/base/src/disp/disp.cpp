@@ -406,8 +406,7 @@ void Disp::Deinit()
     if (stDispInfo.intDeviceType == 0)
     {
 #ifdef INTERFACE_PANEL
-
-       MI_PANEL_DeInit();
+        MI_PANEL_DeInit();
 #endif
     }
     else if (stDispInfo.intDeviceType == 1)
@@ -419,6 +418,9 @@ void Disp::Deinit()
 #endif
     }
     else if (stDispInfo.intDeviceType == 2)
+    {
+    }
+    else if (stDispInfo.intDeviceType == 3)
     {
     }
     else

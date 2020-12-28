@@ -72,7 +72,8 @@ void Vdisp::LoadDb()
         stVdispOutputInfo.intVdispOutFormat = GetIniInt(itMapVdispOut->second.curIoKeyString, "VID_FMT");
         stVdispOutputInfo.intVdispOutBkColor = GetIniInt(itMapVdispOut->second.curIoKeyString, "BK_COLOR");
         vVdispOutputInfo.push_back(stVdispOutputInfo);
-        itMapVdispOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stVdispOutputInfo.intVdispOutFormat;
+        itMapVdispOut->second.stStreanInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+        itMapVdispOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)stVdispOutputInfo.intVdispOutFormat;
         itMapVdispOut->second.stStreanInfo.stFrameInfo.streamWidth = stVdispOutputInfo.intVdispOutWidth;
         itMapVdispOut->second.stStreanInfo.stFrameInfo.streamHeight = stVdispOutputInfo.intVdispOutHeight;
     }
@@ -173,8 +174,8 @@ void Vdisp::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
 
     memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
 #ifndef SSTAR_CHIP_I2
-    stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
-    stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+    stBindInfo.eBindType = (MI_SYS_BindType_e)stIn.bindType;
+    stBindInfo.u32BindParam = (MI_U32)stIn.bindPara;
 #endif
     stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
     stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
@@ -200,9 +201,11 @@ void Vdisp::PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
 
     memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
 #ifndef SSTAR_CHIP_I2
+    stBindInfo.eBindType = (MI_SYS_BindType_e)stIn.bindType;
+    stBindInfo.u32BindParam = (MI_U32)stIn.bindPara;
+#endif
     stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
     stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
-#endif
     stBindInfo.stSrcChnPort.u32ChnId = stPreDesc.chnId;
     stBindInfo.stSrcChnPort.u32PortId = stIn.stPrev.portId;
     stBindInfo.u32SrcFrmrate = stIn.stPrev.frmRate;

@@ -406,12 +406,10 @@ DummySink::~DummySink() {
     if (uConnection == 2)
     {
         TemClose(audioSenderName);
-        rtspObj->Disconnect(pstClientOutInfo->uintAudioOutPort);
         uConnection = 0;
     }
     if (uConnection == 1)
     {
-        rtspObj->Disconnect(pstClientOutInfo->uintVideoOutPort);
         uConnection = 0;
     }
     delete[] fReceiveBufferTittle;
@@ -463,7 +461,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
     {
         if (pstClientOutInfo->bHasAudioPcm)
         {
-            stStreamData.stInfo.eStreamType = E_STREAM_PCM;
+            stStreamData.stInfo.eStreamType = E_STREAM_AUDIO_CODEC_DATA;
+            stStreamData.stInfo.stPcmInfo.enAudioCodecFmt = E_STREAM_PCM;
             //envir() << " Bandwidth " << fSubsession.bandwidth() << " Channel : " << fSubsession.numChannels() << " Sample rate " << fSubsession.rtpTimestampFrequency();
             //envir() << tmpCodecStr.c_str() << " Buf size " << frameSize << " Buffer : "<< (void *)fReceiveBuffer <<"\n";
             stStreamData.stInfo.stPcmInfo.uintBitLength = 16;
@@ -512,7 +511,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         pIntHolder = (unsigned int *)pCharHolder;
         if (tmpCodecStr == "H264")
         {
-            stStreamData.stInfo.eStreamType = E_STREAM_H264;
+            stStreamData.stInfo.eStreamType = E_STREAM_VIDEO_CODEC_DATA;
+            stStreamData.stInfo.stEsInfo.enVideoCodecFmt = E_STREAM_H264;
             u8NaluType = pCharHolder[0] & 0x1F;
             if ((pCharHolder[1] & 0x80) && (u8NaluType >= 1 && u8NaluType <= 5))
             {
@@ -527,7 +527,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
         }
         else if (tmpCodecStr == "H265")
         {
-            stStreamData.stInfo.eStreamType = E_STREAM_H265;
+            stStreamData.stInfo.eStreamType = E_STREAM_VIDEO_CODEC_DATA;
+            stStreamData.stInfo.stEsInfo.enVideoCodecFmt = E_STREAM_H265;
             u8NaluType = (pCharHolder[0] & 0x7E) >> 1;
             if ((pCharHolder[2] & 0x80) && u8NaluType <= 31)
             {
@@ -555,8 +556,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
             rtspObj->Connect(pstClientOutInfo->uintVideoOutPort, &stStreamData.stInfo);
             uConnection = 1;
         }
-        stStreamData.stInfo.stFrameInfo.streamWidth = fSubsession.videoWidth();
-        stStreamData.stInfo.stFrameInfo.streamHeight = fSubsession.videoHeight();
+        stStreamData.stInfo.stEsInfo.streamWidth = fSubsession.videoWidth();
+        stStreamData.stInfo.stEsInfo.streamHeight = fSubsession.videoHeight();
         //envir() << " Width : " << stStreamData.stInfo.streamWidth << " Height : " << stStreamData.stInfo.streamHeight << " FPS : " << fSubsession.videoFPS();
         //envir() << tmpCodecStr.c_str() << " Buf size " << frameSize << " Buffer : "<< (void *)fReceiveBuffer <<"\n";
 
@@ -678,8 +679,8 @@ void *Rtsp::ClientMonitor(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
         // and if you don't intend to do anything more with the "TaskScheduler" and "UsageEnvironment" objects,
         // then you can also reclaim the (small) memory used by these objects by uncommenting the following code:
         /*
-          env->reclaim(); env = NULL;
-          delete scheduler; scheduler = NULL;
+        env->reclaim(); env = NULL;
+        delete scheduler; scheduler = NULL;
         */
 
     }
@@ -700,65 +701,84 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
     memset(pstRtspDataPackage, 0, sizeof(stRtspDataPackage_t));
     switch (pstStreamData->stInfo.eStreamType)
     {
-        case E_STREAM_H264:
-        case E_STREAM_H265:
+        case E_STREAM_VIDEO_CODEC_DATA:
         {
-            unsigned int uintNalu = -1;
-
-            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+            switch (pstStreamData->stInfo.stEsInfo.enVideoCodecFmt)
             {
-                ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
-                pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
-                if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
+                case E_STREAM_H264:
+                case E_STREAM_H265:
                 {
-                    pstRtspDataPackage->u32DataLen += 8;
-                }
-            }
-            pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
-            ASSERT(pstRtspDataPackage->pDataAddr);
-            uintNalu = (pstStreamData->stInfo.eStreamType == E_STREAM_H264) ? 0x5353001E : ((pstStreamData->stInfo.eStreamType == E_STREAM_H265) ? 0x5353003C : -1);
-            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
-            {
-                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
-                u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
-                if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
-                {
-                    unsigned int *pintHolder = NULL;
+                    unsigned int uintNalu = -1;
 
-                    pintHolder = (unsigned int *)((char *)pstRtspDataPackage->pDataAddr + u32Len);
-                    *pintHolder++ = 0x01000000;
-                    *pintHolder = uintNalu;//use NAL_UNIT_RESERVED_30 for slice end
+                    for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+                    {
+                        ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                        pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                        if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
+                        {
+                            pstRtspDataPackage->u32DataLen += 8;
+                        }
+                    }
+                    pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
+                    ASSERT(pstRtspDataPackage->pDataAddr);
+                    uintNalu = (pstStreamData->stInfo.stEsInfo.enVideoCodecFmt == E_STREAM_H264) ? 0x5353001E : ((pstStreamData->stInfo.stEsInfo.enVideoCodecFmt == E_STREAM_H265) ? 0x5353003C : -1);
+                    for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+                    {
+                        memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                        u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                        if (pstStreamData->stEsData.pDataAddr[i].bSliceEnd)
+                        {
+                            unsigned int *pintHolder = NULL;
+
+                            pintHolder = (unsigned int *)((char *)pstRtspDataPackage->pDataAddr + u32Len);
+                            *pintHolder++ = 0x01000000;
+                            *pintHolder = uintNalu; //use NAL_UNIT_RESERVED_30 for slice end
+                        }
+                    }
                 }
+                break;
+                case E_STREAM_JPEG:
+                {
+                    for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+                    {
+                        ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                        pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                    }
+                    pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
+                    ASSERT(pstRtspDataPackage->pDataAddr);
+                    for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+                    {
+                        memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
+                        u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                    }
+                }
+                break;
+                default:
+                    ASSERT(0);
             }
         }
         break;
-        case E_STREAM_JPEG:
+        case E_STREAM_AUDIO_CODEC_DATA:
         {
-            for (MI_U8 i = 0; i < pstStreamData->stEsData.uintPackCnt; i++)
+
+            switch (pstStreamData->stInfo.stPcmInfo.enAudioCodecFmt)
             {
-                ASSERT(pstStreamData->stEsData.pDataAddr[i].uintDataSize);
-                pstRtspDataPackage->u32DataLen += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
-            }
-            pstRtspDataPackage->pDataAddr = (void *)malloc(pstRtspDataPackage->u32DataLen);
-            ASSERT(pstRtspDataPackage->pDataAddr);
-            for (MI_U8 i = 0; i <pstStreamData->stEsData.uintPackCnt; i++)
-            {
-                memcpy((char *)pstRtspDataPackage->pDataAddr + u32Len, pstStreamData->stEsData.pDataAddr[i].pData, pstStreamData->stEsData.pDataAddr[i].uintDataSize);
-                u32Len += pstStreamData->stEsData.pDataAddr[i].uintDataSize;
+                case E_STREAM_PCM:
+                {
+                    pstRtspDataPackage->u32DataLen = pstStreamData->stPcmData.uintSize;
+                    pstRtspDataPackage->pDataAddr = (void *)malloc(pstStreamData->stPcmData.uintSize);
+                    ASSERT(pstRtspDataPackage->pDataAddr);
+                    memcpy((char *)pstRtspDataPackage->pDataAddr, pstStreamData->stPcmData.pData, pstStreamData->stPcmData.uintSize);
+                }
+                break;
+                default:
+                    ASSERT(0);
             }
         }
-        break;
-        case E_STREAM_PCM:
-        {
-            pstRtspDataPackage->u32DataLen = pstStreamData->stPcmData.uintSize;
-            pstRtspDataPackage->pDataAddr = (void *)malloc(pstStreamData->stPcmData.uintSize);
-            ASSERT(pstRtspDataPackage->pDataAddr);
-            memcpy((char *)pstRtspDataPackage->pDataAddr, pstStreamData->stPcmData.pData, pstStreamData->stPcmData.uintSize);
-        }
-        break;
         default:
             ASSERT(0);
     }
+
     pthread_mutex_lock(&stDataMuxCond.mutex);
     iter = mapRtspDataPackage.find(portId);
     if (iter == mapRtspDataPackage.end())

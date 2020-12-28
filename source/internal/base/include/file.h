@@ -29,6 +29,7 @@ typedef struct stFileOutInfo_s
 {
     std::string fileName;
     int intreadFd;
+    int intFileOutType;
     int intFileFmt;
     int intFileOutWidth;
     int intFileOutHeight;

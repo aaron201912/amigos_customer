@@ -40,13 +40,37 @@ void File::LoadDb()
     for (itMapFileOut = mapModOutputInfo.begin(); itMapFileOut != mapModOutputInfo.end(); itMapFileOut++)
     {
         stFileOutput.fileName = GetIniString(itMapFileOut->second.curIoKeyString, "FILE_READ_PATH");
-        stFileOutput.intFileOutWidth = GetIniInt(itMapFileOut->second.curIoKeyString,  "VID_W");
-        stFileOutput.intFileOutHeight = GetIniInt(itMapFileOut->second.curIoKeyString, "VID_H");
-        stFileOutput.intFileFmt= GetIniInt(itMapFileOut->second.curIoKeyString, "VID_FMT");
+        stFileOutput.intFileOutType = GetIniInt(itMapFileOut->second.curIoKeyString, "DATA_TYPE");
+        itMapFileOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stFileOutput.intFileOutType;
+        stFileOutput.intFileFmt = GetIniInt(itMapFileOut->second.curIoKeyString, "DATA_FMT");
+        switch (stFileOutput.intFileOutType)
+        {
+            case E_STREAM_VIDEO_RAW_DATA:
+            {
+                itMapFileOut->second.stStreanInfo.stFrameInfo.streamWidth = stFileOutput.intFileOutWidth = GetIniInt(itMapFileOut->second.curIoKeyString,  "VID_W");
+                itMapFileOut->second.stStreanInfo.stFrameInfo.streamHeight = stFileOutput.intFileOutHeight = GetIniInt(itMapFileOut->second.curIoKeyString, "VID_H");
+                itMapFileOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)stFileOutput.intFileFmt;
+            }
+            break;
+            case E_STREAM_VIDEO_CODEC_DATA:
+            {
+                itMapFileOut->second.stStreanInfo.stEsInfo.streamWidth = stFileOutput.intFileOutWidth = GetIniInt(itMapFileOut->second.curIoKeyString,  "VID_W");
+                itMapFileOut->second.stStreanInfo.stEsInfo.streamHeight = stFileOutput.intFileOutHeight = GetIniInt(itMapFileOut->second.curIoKeyString, "VID_H");
+                itMapFileOut->second.stStreanInfo.stEsInfo.enVideoCodecFmt = (E_VIDEO_CODEC_FORMAT)stFileOutput.intFileFmt;
+
+            }
+            break;
+            case E_STREAM_AUDIO_CODEC_DATA:
+            {
+                //to do...
+            }
+            break;
+            default:
+                ASSERT(0);
+        }
         mapOutputRdFile[itMapFileOut->second.curPortId] = stFileOutput;
-        itMapFileOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stFileOutput.intFileFmt;
-        itMapFileOut->second.stStreanInfo.stFrameInfo.streamWidth = stFileOutput.intFileOutWidth;
-        itMapFileOut->second.stStreanInfo.stFrameInfo.streamHeight = stFileOutput.intFileOutHeight;
+        itMapFileOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stFileOutput.intFileOutType;
+
     }
 }
 void File::Init()
@@ -104,7 +128,7 @@ void File::BindBlock(stModInputInfo_t & stIn)
 }
 void File::UnBindBlock(stModInputInfo_t & stIn)
 {
-   std::map<unsigned int, stFileInInfo_t>::iterator it;
+    std::map<unsigned int, stFileInInfo_t>::iterator it;
 
     it = mapInputWrFile.find(stIn.curPortId);
     if (it != mapInputWrFile.end())
@@ -127,76 +151,110 @@ void File::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
 
         switch (pStreamData->stInfo.eStreamType)
         {
-            case E_STREAM_YUV422:
+            case E_STREAM_VIDEO_RAW_DATA:
             {
-                int yuv_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 2;
-                char *dst_buf;
-
-                dst_buf = pStreamData->pYuvData;
-                if(write(intFd, dst_buf, yuv_size) != yuv_size)
+                switch (pStreamData->stInfo.stFrameInfo.enVideoRawFmt)
                 {
-                    AMIGOS_ERR("write yuv data err!\n");
-                    return;
-                }
-            }
-            break;
-            case E_STREAM_YUV420:
-            {
-                int y_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
-                int uv_size = y_size/2;
-                char *dst_buf;
-
-                dst_buf = pStreamData->stYuvSpData.pYdataAddr;
-                if(write(intFd, dst_buf, y_size) != y_size)
-                {
-                    AMIGOS_ERR("write yuv data err!\n");
-                    return;
-                }
-                dst_buf = pStreamData->stYuvSpData.pUvDataAddr;
-                if(write(intFd, dst_buf, uv_size) != uv_size)
-                {
-                    AMIGOS_ERR("write uvdata err!\n");
-                    return;
-                }
-            }
-            break;
-            case E_STREAM_H264:
-            case E_STREAM_H265:
-            {
-#if 0
-                MI_U8 au8Header[16];
-                static int cnt = 0;
-
-                if (cnt == 60)
-                    break;
-                for (MI_U8 i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
-                {
-                    memset(au8Header, 0, 16);
-                    au8Header[0] = 0x1;
-                    au8Header[4] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 24) & 0xFF;
-                    au8Header[5] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 16) & 0xFF;
-                    au8Header[6] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 8)& 0xFF;
-                    au8Header[7] = (pStreamData->stEsData.pDataAddr[i].uintDataSize) & 0xFF;
-                    write(intFd, (void *)au8Header, 16);
-                    write(intFd, (void *)pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
-                }
-                cnt++;
-#else
-                for (MI_U8 i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
-                {
-                    write(intFd, (void *)pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
-                }
+                    case E_STREAM_YUV422:
+#ifndef SSTAR_CHIP_I2
+                    case E_STREAM_YUV422_UYVY:
+                    case E_STREAM_YUV422_YVYU:
+                    case E_STREAM_YUV422_VYUY:
 #endif
+                    {
+                        int yuv_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 2;
+                        char *dst_buf;
+
+                        dst_buf = pStreamData->pYuvData;
+                        if(write(intFd, dst_buf, yuv_size) != yuv_size)
+                        {
+                            AMIGOS_ERR("write yuv data err!\n");
+                            return;
+                        }
+                    }
+                    break;
+                    case E_STREAM_YUV420:
+                    {
+                        int y_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
+                        int uv_size = y_size/2;
+                        char *dst_buf;
+
+                        dst_buf = pStreamData->stYuvSpData.pYdataAddr;
+                        if(write(intFd, dst_buf, y_size) != y_size)
+                        {
+                            AMIGOS_ERR("write yuv data err!\n");
+                            return;
+                        }
+                        dst_buf = pStreamData->stYuvSpData.pUvDataAddr;
+                        if(write(intFd, dst_buf, uv_size) != uv_size)
+                        {
+                            AMIGOS_ERR("write uvdata err!\n");
+                            return;
+                        }
+                    }
+                    break;
+                    default:
+                        break;
+                }
             }
             break;
-            case E_STREAM_PCM:
+            case E_STREAM_VIDEO_CODEC_DATA:
             {
-                write(intFd, (void *)pStreamData->stPcmData.pData, pStreamData->stPcmData.uintSize);
+                switch (pStreamData->stInfo.stEsInfo.enVideoCodecFmt)
+                {
+                    case E_STREAM_H264:
+                    case E_STREAM_H265:
+                    {
+#if 0
+                        MI_U8 au8Header[16];
+                        static int cnt = 0;
+
+                        if (cnt == 1200)
+                            break;
+                        for (MI_U8 i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
+                        {
+                            memset(au8Header, 0, 16);
+                            au8Header[0] = 0x1;
+                            au8Header[4] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 24) & 0xFF;
+                            au8Header[5] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 16) & 0xFF;
+                            au8Header[6] = ((pStreamData->stEsData.pDataAddr[i].uintDataSize) >> 8)& 0xFF;
+                            au8Header[7] = (pStreamData->stEsData.pDataAddr[i].uintDataSize) & 0xFF;
+                            write(intFd, (void *)au8Header, 16);
+                            write(intFd, (void *)pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                            AMIGOS_INFO("Write fine frame count %d\n", cnt);
+                        }
+                        cnt++;
+#else
+                        for (MI_U8 i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
+                        {
+                             write(intFd, (void *)pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                        }
+#endif
+                    }
+                    break;
+                    default:
+                        break;
+
+                }
+            }
+            break;
+            case E_STREAM_AUDIO_CODEC_DATA:
+            {
+                switch (pStreamData->stInfo.stPcmInfo.enAudioCodecFmt)
+                {
+                    case E_STREAM_PCM:
+                    {
+                        write(intFd, (void *)pStreamData->stPcmData.pData, pStreamData->stPcmData.uintSize);
+                    }
+                    break;
+                    default:
+                        //AMIGOS_ERR("Not support!!\n");
+                        //assert(0);
+                        break;
+                }
             }
             break;
             default:
-                //AMIGOS_ERR("Not support!!\n");
-                //assert(0);
                 break;
         }
     }
@@ -209,7 +267,6 @@ int File::StopSender(unsigned int outPortId)
 {
     if (uConnection == 1)
     {
-        Disconnect(outPortId);
         uConnection = 0;
     }
     TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
@@ -318,94 +375,162 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
     }
 
     memset(&stFileStreamData, 0, sizeof(stStreamData_t));
-    stFileStreamData.stInfo.eStreamType = (E_STREAM_TYPE)((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileFmt;
+    stFileStreamData.stInfo.eStreamType = (E_STREAM_TYPE)((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutType;
 
     switch (stFileStreamData.stInfo.eStreamType)
     {
-        case E_STREAM_YUV420:
+        case E_STREAM_VIDEO_RAW_DATA:
         {
-            stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
-            stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
-            y_size  = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight;
-            uv_size  = y_size/2;
-            pYdata = (char*)malloc(y_size);
-            pUvdata = (char*)malloc(uv_size);
-            if(pYdata == NULL || pUvdata == NULL)
+            stFileStreamData.stInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)((File *)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileFmt;
+            switch (stFileStreamData.stInfo.stFrameInfo.enVideoRawFmt)
             {
-                goto free_buf;
-            }
-            ret =  GetOneFrameYUV420(readfp, pYdata, pUvdata, y_size, uv_size);
-            if(ret == 1)
-            {
-                stFileStreamData.stYuvSpData.pYdataAddr  = pYdata;
-                stFileStreamData.stYuvSpData.pUvDataAddr = pUvdata;
-                if (pSendClass->uConnection == 0)
+                case E_STREAM_YUV420:
                 {
-                    pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
-                    pSendClass->uConnection = 1;
+                    stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
+                    stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
+                    y_size  = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight;
+                    uv_size  = y_size/2;
+                    pYdata = (char*)malloc(y_size);
+                    pUvdata = (char*)malloc(uv_size);
+                    if(pYdata == NULL || pUvdata == NULL)
+                    {
+                        goto free_buf;
+                    }
+                    ret =  GetOneFrameYUV420(readfp, pYdata, pUvdata, y_size, uv_size);
+                    if(ret == 1)
+                    {
+                        stFileStreamData.stYuvSpData.pYdataAddr  = pYdata;
+                        stFileStreamData.stYuvSpData.pUvDataAddr = pUvdata;
+                        if (pSendClass->uConnection == 0)
+                        {
+                            pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
+                            pSendClass->uConnection = 1;
+                        }
+                        pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                    }
                 }
-                pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                break;
+                case E_STREAM_YUV422:
+#ifndef SSTAR_CHIP_I2
+                case E_STREAM_YUV422_UYVY:
+                case E_STREAM_YUV422_YVYU:
+                case E_STREAM_YUV422_VYUY:
+#endif
+                {
+                    stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
+                    stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
+                    dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight * 2;
+                    pData = (char*)malloc(dataSize);
+                    ret =  GetOneFrame(readfp, pData, dataSize);
+                    if(ret == 1)
+                    {
+                        stFileStreamData.pYuvData  = pData;
+                        if (pSendClass->uConnection == 0)
+                        {
+                            pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
+                            pSendClass->uConnection = 1;
+                        }
+                        pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                    }
+                }
+                break;
+#ifndef SSTAR_CHIP_I2
+                case E_STREAM_ARGB8888:
+                case E_STREAM_ABGR8888:
+                case E_STREAM_BGRA8888:
+                {
+                    stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
+                    stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
+                    dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight * 4;
+                    pData = (char*)malloc(dataSize);
+                    ret =  GetOneFrame(readfp, pData, dataSize);
+                    if(ret == 1)
+                    {
+                        stFileStreamData.pYuvData  = pData;
+                        if (pSendClass->uConnection == 0)
+                        {
+                            pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
+                            pSendClass->uConnection = 1;
+                        }
+                        pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                    }
+                }
+                break;
+                case E_STREAM_RGB_BAYER_BASE...E_STREAM_RGB_BAYER_MAX:
+                {
+                    stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
+                    stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
+                    dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight;
+                    pData = (char*)malloc(dataSize);
+                    ret =  GetOneFrame(readfp, pData, dataSize);
+                    if(ret == 1)
+                    {
+                        stFileStreamData.pYuvData  = pData;
+                        if (pSendClass->uConnection == 0)
+                        {
+                            pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
+                            pSendClass->uConnection = 1;
+                        }
+                        pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                    }
+                }
+                break;
+#endif
+                default:
+                    break;
             }
         }
         break;
-        case E_STREAM_YUV422:
+        case E_STREAM_VIDEO_CODEC_DATA:
         {
-            stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
-            stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
-            dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight * 2;
-            pData = (char*)malloc(dataSize);
-            ret =  GetOneFrame(readfp, pData, dataSize);
-            if(ret == 1)
+            stFileStreamData.stInfo.stEsInfo.enVideoCodecFmt = (E_VIDEO_CODEC_FORMAT)((File *)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileFmt;
+            switch (stFileStreamData.stInfo.stEsInfo.enVideoCodecFmt)
             {
-                stFileStreamData.pYuvData  = pData;
-                if (pSendClass->uConnection == 0)
+                case E_STREAM_H264:
+                case E_STREAM_H265:
+                case E_STREAM_JPEG:
                 {
-                    pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
-                    pSendClass->uConnection = 1;
+                    stFileStreamData.stInfo.stEsInfo.streamWidth = ((File *)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
+                    stFileStreamData.stInfo.stEsInfo.streamHeight = ((File *)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
+                    memset(&stEsPacket, 0, sizeof(stEsPacket));
+                    memset(au8Header, 0, 16);
+                    //u32Pos = lseek(readfp, 0, SEEK_CUR);
+                    s32Len = read(readfp, au8Header, 16);
+                    if (s32Len <= 0)
+                    {
+                        lseek(readfp, 0, SEEK_SET);
+                        goto free_buf;
+                    }
+                    u32FrameLen = MI_U32VALUE(au8Header, 4);
+                    pu8Buf = (MI_U8 *)malloc(u32FrameLen);
+                    if (pu8Buf == NULL)
+                    {
+                        return NULL;
+                    }
+                    s32Len = read(readfp, pu8Buf, u32FrameLen);
+                    if (s32Len <= 0)
+                    {
+                        lseek(readfp, 0, SEEK_SET);
+                        goto free_buf;
+                    }
+
+                    stEsPacket[0].uintDataSize = s32Len;
+                    stEsPacket[0].pData = (char *)pu8Buf;
+                    stEsPacket[0].bSliceEnd = 1;
+
+                    stFileStreamData.stEsData.uintPackCnt = 1;
+                    stFileStreamData.stEsData.pDataAddr = stEsPacket;
+                    if (pSendClass->uConnection == 0)
+                    {
+                        pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
+                        pSendClass->uConnection = 1;
+                    }
+                    pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stFileStreamData));
                 }
-                pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stStreamData_t));
+                break;
+                default:
+                    break;
             }
-        }
-        break;
-        case E_STREAM_H264:
-        case E_STREAM_H265:
-        {
-            stFileStreamData.stInfo.stFrameInfo.streamWidth = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutWidth;
-            stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
-            memset(&stEsPacket, 0, sizeof(stEsPacket));
-            memset(au8Header, 0, 16);
-            //u32Pos = lseek(readfp, 0, SEEK_CUR);
-            s32Len = read(readfp, au8Header, 16);
-            if(s32Len <= 0)
-            {
-                lseek(readfp, 0, SEEK_SET);
-                goto free_buf;
-            }
-            u32FrameLen = MI_U32VALUE(au8Header, 4);
-            pu8Buf = (MI_U8 *)malloc(u32FrameLen);
-            if(pu8Buf == NULL)
-            {
-                return NULL;
-            }
-            s32Len = read(readfp, pu8Buf, u32FrameLen);
-            if(s32Len <= 0)
-            {
-                lseek(readfp, 0, SEEK_SET);
-                goto free_buf;
-            }
-
-            stEsPacket[0].uintDataSize = s32Len;
-            stEsPacket[0].pData = (char*)pu8Buf;
-            stEsPacket[0].bSliceEnd = 1;
-
-            stFileStreamData.stEsData.uintPackCnt = 1;
-            stFileStreamData.stEsData.pDataAddr = stEsPacket;
-            if (pSendClass->uConnection == 0)
-            {
-                pSendClass->Connect(pReceiver->uintPort, &stFileStreamData.stInfo);
-                pSendClass->uConnection = 1;
-            }
-            pSendClass->Send(pReceiver->uintPort, &stFileStreamData, sizeof(stFileStreamData));
         }
         break;
         default:

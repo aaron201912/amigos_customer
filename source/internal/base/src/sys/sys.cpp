@@ -90,6 +90,7 @@ static MI_S32 Sys_Exit(void)
 int Sys::GetIniInt(std::string section, std::string key, int intDefault)
 {
     std::string strTmp;
+    int intRet = intDefault;
 
     if (!m_pstDict)
     {
@@ -98,12 +99,19 @@ int Sys::GetIniInt(std::string section, std::string key, int intDefault)
     }
     strTmp = section + ':' + key;
 
-   //AMIGOS_INFO("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getint(m_pstDict, strTmp.c_str(), intDefault);
+    //AMIGOS_INFO("GET STR[%s]\n", strTmp.c_str());
+    intRet = iniparser_getint(m_pstDict, strTmp.c_str(), intDefault);
+    if (intRet == intDefault && intRet == -1)
+    {
+        AMIGOS_ERR("Get SECTION: %s KEY %s error!\n", section.c_str(), key.c_str());
+    }
+
+    return intRet;
 }
 unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key, unsigned int uintDefault)
 {
     std::string strTmp;
+    unsigned int uintRet = uintDefault;
 
     if (!m_pstDict)
     {
@@ -112,12 +120,19 @@ unsigned int Sys::GetIniUnsignedInt(std::string section, std::string key, unsign
     }
     strTmp = section + ':' + key;
 
-    //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getunsignedint(m_pstDict, strTmp.c_str(), uintDefault);
+    //AMIGOS_INFO("GET STR[%s]\n", strTmp.c_str());
+    uintRet = iniparser_getunsignedint(m_pstDict, strTmp.c_str(), uintDefault);
+    if (uintRet == uintDefault && uintRet == (unsigned int)-1)
+    {
+        AMIGOS_ERR("Get SECTION: %s KEY %s error!\n", section.c_str(), key.c_str());
+    }
+
+    return uintRet; 
 }
 char* Sys::GetIniString(std::string section, std::string key, char *pDefaultStr)
 {
     std::string strTmp;
+    char *pRet = pDefaultStr;
 
     if (!m_pstDict)
     {
@@ -126,8 +141,14 @@ char* Sys::GetIniString(std::string section, std::string key, char *pDefaultStr)
     }
     strTmp = section + ':' + key;
 
-    //printf("[%s]get str [%s]\n", __FUNCTION__, strTmp.c_str());
-    return iniparser_getstring(m_pstDict, strTmp.c_str(), pDefaultStr);
+    //AMIGOS_INFO("GET STR[%s]\n", strTmp.c_str());
+    pRet = iniparser_getstring(m_pstDict, strTmp.c_str(), pDefaultStr);
+    if (pDefaultStr == pRet && pDefaultStr == NULL)
+    {
+        AMIGOS_ERR("Get SECTION: %s KEY %s error!\n", section.c_str(), key.c_str());
+    }
+
+    return pRet;
 }
 void Sys::InitSys(std::string strIniPath, std::map<std::string, unsigned int> &mapModId)
 {
@@ -283,8 +304,8 @@ void Sys::End(std::map<std::string, Sys *> &maskMap)
         {
             continue;
         }
-        pClass->Deinit();
         AMIGOS_INFO("deinit %s\n", pClass->stModDesc.modKeyString.c_str());
+        pClass->Deinit();
     }
 
 }
@@ -541,8 +562,8 @@ void Sys::SetCurInfo(std::string &strKey)
         {
             memset(tmpStr, 0, 20);
             sprintf(tmpStr, "IN_%d", i);
-            pRes = GetIniString(strKey, tmpStr);
-            if(pRes != NULL)
+            pRes = GetIniString(strKey, tmpStr, (char *)"none");
+            if(strcmp(pRes, "none"))
             {
                 stInputInfo.curIoKeyString = pRes;
                 strTempString = GetIniString(pRes, "PREV");
@@ -557,7 +578,11 @@ void Sys::SetCurInfo(std::string &strKey)
                 stInputInfo.stPrev.frmRate = GetIniUnsignedInt(strTempString, "FPS");
                 stInputInfo.curPortId = GetIniUnsignedInt(pRes, "PORT");
                 stInputInfo.curFrmRate = GetIniUnsignedInt(pRes, "FPS");
-                mapModInputInfo[stInputInfo.curPortId] = stInputInfo;
+#ifndef SSTAR_CHIP_I2
+				stInputInfo.bindType = GetIniUnsignedInt(pRes, "BIND_TYPE", 0);
+                stInputInfo.bindPara = GetIniUnsignedInt(pRes, "BIND_PARAM", 0);
+#endif
+				mapModInputInfo[stInputInfo.curPortId] = stInputInfo;
                 count++;
             }
             if(count == inCnt)
@@ -573,8 +598,8 @@ void Sys::SetCurInfo(std::string &strKey)
         {
             memset(tmpStr, 0, 20);
             sprintf(tmpStr, "OUT_%d", i);
-            pRes = GetIniString(strKey, tmpStr);
-            if(pRes != NULL)
+            pRes = GetIniString(strKey, tmpStr, (char *)"none");
+            if(strcmp(pRes, "none"))
             {
                 stOutputInfo.curIoKeyString = pRes;
                 stOutputInfo.curPortId = GetIniUnsignedInt(pRes, "PORT");
@@ -630,8 +655,8 @@ void Sys::PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc)
 
     memset(&stBindInfo, 0x0, sizeof(stSys_BindInfo_T));
 #ifndef SSTAR_CHIP_I2
-    stBindInfo.eBindType = (MI_SYS_BindType_e)GetIniInt(stIn.curIoKeyString, "BIND_TYPE");
-    stBindInfo.u32BindParam = GetIniInt(stIn.curIoKeyString, "BIND_PARAM");
+    stBindInfo.eBindType = (MI_SYS_BindType_e)stIn.bindType;
+    stBindInfo.u32BindParam = stIn.bindPara;
 #endif
     stBindInfo.stSrcChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId ;
     stBindInfo.stSrcChnPort.u32DevId = stPreDesc.devId;
@@ -752,7 +777,6 @@ int Sys::StopSender(unsigned int outPortId)
     ASSERT(mapModOutputInfo.find(outPortId) != mapModOutputInfo.end());
     if (mapModOutputInfo[outPortId].bSenderConnect == 1)
     {
-        Disconnect(outPortId);
         mapModOutputInfo[outPortId].bSenderConnect = 0;
     }
     TemStop(mapModOutputInfo[outPortId].curIoKeyString.c_str());
@@ -818,21 +842,6 @@ int Sys::Connect(unsigned int outPortId, stStreamInfo_t *pInfo)
 
     return 0;
 }
-int Sys::Disconnect(unsigned int outPortId)
-{
-    std::map<std::string, stReceiverPortDesc_t>::iterator it;
-    std::map<std::string, stReceiverPortDesc_t> *pMap = &mapRecevier[outPortId].mapPortDesc;
-
-    pthread_mutex_lock(&mapRecevier[outPortId].stDeliveryMutex);
-    for (it = pMap->begin(); it != pMap->end(); ++it)
-    {
-        it->second.pSysClass->Outcoming();
-    }
-    pthread_mutex_unlock(&mapRecevier[outPortId].stDeliveryMutex);
-
-    return 0;
-}
-
 int Sys::CreateReceiver(unsigned int inPortId, DeliveryRecFp funcRecFp, void *pUsrData)
 {
     Sys *pPrevClass = NULL;
@@ -1130,15 +1139,16 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             }
             if (MI_SUCCESS == MI_SYS_ChnOutputPortGetBuf(&stChnOutputPort , &stBufInfo,&hHandle))
             {
-                stStreamData.stInfo.eStreamType = (E_STREAM_TYPE)stBufInfo.stFrameData.ePixelFormat;
+                stStreamData.stInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+                stStreamData.stInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)stBufInfo.stFrameData.ePixelFormat;
                 stStreamData.stInfo.stFrameInfo.streamWidth = stBufInfo.stFrameData.u16Width;
                 stStreamData.stInfo.stFrameInfo.streamHeight = stBufInfo.stFrameData.u16Height;
-                if(stStreamData.stInfo.eStreamType == E_STREAM_YUV420)
+                if(stStreamData.stInfo.stFrameInfo.enVideoRawFmt == E_STREAM_YUV420)
                 {
                     stStreamData.stYuvSpData.pYdataAddr = (char*)stBufInfo.stFrameData.pVirAddr[0];
                     stStreamData.stYuvSpData.pUvDataAddr = (char*)stBufInfo.stFrameData.pVirAddr[1];
                 }
-                else if(stStreamData.stInfo.eStreamType == E_STREAM_YUV422)
+                else if(stStreamData.stInfo.stFrameInfo.enVideoRawFmt == E_STREAM_YUV422)
                 {
                     stStreamData.pYuvData = (char*)stBufInfo.stFrameData.pVirAddr[0];
                 }
@@ -1161,7 +1171,8 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             memset(&stAecFrm, 0, sizeof(MI_AUDIO_AecFrame_t));
             if (MI_SUCCESS == MI_AI_GetFrame((MI_AUDIO_DEV)pClass->stModDesc.devId, (MI_AI_CHN)pClass->stModDesc.chnId, &stFrm, &stAecFrm, 40))
             {
-                stStreamData.stInfo.eStreamType = E_STREAM_PCM;
+                stStreamData.stInfo.eStreamType = E_STREAM_AUDIO_CODEC_DATA;
+                stStreamData.stInfo.stPcmInfo.enAudioCodecFmt = E_STREAM_PCM;
 #ifndef SSTAR_CHIP_I2
                 stStreamData.stPcmData.pData = (char *)stFrm.apSrcPcmVirAddr[0];
                 stStreamData.stPcmData.uintSize = stFrm.u32SrcPcmLen;
@@ -1230,7 +1241,8 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                     stEsPackage_t stEsPacket[16];
 
                     pVencClass->GetInfo(stVencInfo);
-                    stStreamData.stInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
+                    stStreamData.stInfo.eStreamType = E_STREAM_VIDEO_CODEC_DATA;
+                    stStreamData.stInfo.stEsInfo.enVideoCodecFmt = (E_VIDEO_CODEC_FORMAT)stVencInfo.intEncodeType;
                     stStreamData.stEsData.uintPackCnt = stStream.u32PackCount;
                     for (MI_U8 i = 0; i < stStream.u32PackCount; i++)
                     {
@@ -1293,160 +1305,260 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
         pStreamData = (stStreamData_t *)pData;
         switch (pStreamData->stInfo.eStreamType)
         {
-            case E_STREAM_YUV420:
+            case E_STREAM_VIDEO_RAW_DATA:
             {
-                memset(&stBufConf ,  0 , sizeof(stBufConf));
-                memset(&stBufInfo ,  0 , sizeof(stBufInfo));
-                memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
-
-                stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
-                stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
-                stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
-                stSysChnInputPort.u32PortId = portId;
-
-                MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
-                stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
-                stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
-                stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
-                stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
-                stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
-                if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
+                switch (pStreamData->stInfo.stFrameInfo.enVideoRawFmt)
                 {
-                    y_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
-                    uv_size = y_size/2;
-                    memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->stYuvSpData.pYdataAddr, y_size);
-                    memcpy(stBufInfo.stFrameData.pVirAddr[1], pStreamData->stYuvSpData.pUvDataAddr, uv_size);
-                    s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
-                    if(s32Ret != MI_SUCCESS)
+                    case E_STREAM_YUV420:
                     {
-                        AMIGOS_ERR("put buf err is %x\n", s32Ret);
-                    }
-                }
-                else
-                {
-                    AMIGOS_ERR("get port buf err is %x\n", s32Ret);
-                }
-            }
-            break;
-            case E_STREAM_YUV422:
-            {
-                memset(&stBufConf ,  0 , sizeof(stBufConf));
-                memset(&stBufInfo ,  0 , sizeof(stBufInfo));
-                memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
+                        memset(&stBufConf ,  0 , sizeof(stBufConf));
+                        memset(&stBufInfo ,  0 , sizeof(stBufInfo));
+                        memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
 
-                stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
-                stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
-                stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
-                stSysChnInputPort.u32PortId = portId;
+                        stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
+                        stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
+                        stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
+                        stSysChnInputPort.u32PortId = portId;
 
-                MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
-                stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
-                stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
-                stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
-                stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
-                stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
-                if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
-                {
-                    data_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 2;
-                    memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->pYuvData, data_size);
-                    s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
-                    if(s32Ret != MI_SUCCESS)
-                    {
-                        AMIGOS_ERR("put buf err is %x\n", s32Ret);
-                    }
-                }
-                else
-                {
-                    AMIGOS_ERR("get port buf err is %x\n", s32Ret);
-                }
-            }
-            break;
-            case E_STREAM_H264:
-            case E_STREAM_H265:
-            case E_STREAM_JPEG:
-            {
-#ifdef INTERFACE_VDEC
-                unsigned int modId = pInstance->stModDesc.modId;
-
-                if(modId == E_SYS_MOD_VDEC)
-                {
-                    MI_U64 u64Pts = 0;
-                    MI_VDEC_VideoStream_t stVdecStream;
-
-                    if (!pStreamData->stEsData.uintPackCnt)
-                    {
-                        return;
-                    }
-                    if (pStreamData->stEsData.uintPackCnt == 1
-                        && pStreamData->stEsData.pDataAddr[0].bSliceEnd
-                        && pInstance->uintRecvEsBufferSize == 0)
-                    {
-                        memset(&stVdecStream, 0x0, sizeof(stVdecStream));
-                        stVdecStream.pu8Addr = (MI_U8*)pStreamData->stEsData.pDataAddr[0].pData;
-                        stVdecStream.u32Len = pStreamData->stEsData.pDataAddr[0].uintDataSize;
-                        stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
-                        stVdecStream.bEndOfFrame = 1;
-                        stVdecStream.bEndOfStream = 0;
-                        //AMIGOS_INFO("Addr %p len %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len);
-                        s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
-                        if (MI_SUCCESS != s32Ret)
+                        MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
+                        stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
+                        stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+                        stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                        stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                        stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
+                        if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
                         {
-                            AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
-                        }
-                    }
-                    else
-                    {
-                        char *pTempBuffer = NULL;
-                        unsigned int i = 0;
-
-                        if (!pInstance->pRecvEsBuffer)
-                        {
-                            pInstance->pRecvEsBuffer = (char *)malloc(1024 * 1024);
-                            ASSERT(pInstance->pRecvEsBuffer);
-                        }
-                        for(i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
-                        {
-                            if (pInstance->uintRecvEsBufferSize + pStreamData->stEsData.pDataAddr[i].uintDataSize > 1024 * 1024)
+                            y_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
+                            uv_size = y_size/2;
+                            memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->stYuvSpData.pYdataAddr, y_size);
+                            memcpy(stBufInfo.stFrameData.pVirAddr[1], pStreamData->stYuvSpData.pUvDataAddr, uv_size);
+                            s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
+                            if(s32Ret != MI_SUCCESS)
                             {
-                                pInstance->uintRecvEsBufferSize = 0;
-                            }
-                            //AMIGOS_INFO("Copy %p data size %d\n", pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
-                            pTempBuffer = pInstance->pRecvEsBuffer + pInstance->uintRecvEsBufferSize;
-                            memcpy(pTempBuffer, pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
-                            pInstance->uintRecvEsBufferSize += pStreamData->stEsData.pDataAddr[i].uintDataSize;
-                            if (pStreamData->stEsData.pDataAddr[i].bSliceEnd)
-                            {
-                                memset(&stVdecStream, 0x0, sizeof(stVdecStream));
-                                stVdecStream.pu8Addr = (MI_U8*)pInstance->pRecvEsBuffer;
-                                stVdecStream.u32Len = pInstance->uintRecvEsBufferSize;
-                                stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
-                                stVdecStream.bEndOfFrame = 1;
-                                stVdecStream.bEndOfStream = 0;
-                                //AMIGOS_INFO("Send Addr %p len %d id %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len, i);
-                                s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
-                                if (MI_SUCCESS != s32Ret)
-                                {
-                                    AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
-                                }
-                                pInstance->uintRecvEsBufferSize = 0;
+                                AMIGOS_ERR("put buf err is %x\n", s32Ret);
                             }
                         }
+                        else
+                        {
+                            AMIGOS_ERR("get port buf err is %x\n", s32Ret);
+                        }
                     }
-                }
+                    break;
+                    case E_STREAM_YUV422:
+#ifndef SSTAR_CHIP_I2
+                    case E_STREAM_YUV422_UYVY:
+                    case E_STREAM_YUV422_YVYU:
+                    case E_STREAM_YUV422_VYUY:
 #endif
+                    {
+                        memset(&stBufConf ,  0 , sizeof(stBufConf));
+                        memset(&stBufInfo ,  0 , sizeof(stBufInfo));
+                        memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
+
+                        stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
+                        stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
+                        stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
+                        stSysChnInputPort.u32PortId = portId;
+
+                        MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
+                        stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
+                        stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+                        stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                        stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                        stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
+                        if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
+                        {
+                            data_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 2;
+                            memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->pYuvData, data_size);
+                            s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
+                            if(s32Ret != MI_SUCCESS)
+                            {
+                                AMIGOS_ERR("put buf err is %x\n", s32Ret);
+                            }
+                        }
+                        else
+                        {
+                            AMIGOS_ERR("get port buf err is %x\n", s32Ret);
+                        }
+                    }
+                    break;
+#ifndef SSTAR_CHIP_I2
+					case E_STREAM_ARGB8888:
+                    case E_STREAM_ABGR8888:
+                    case E_STREAM_BGRA8888:
+                    {
+                        memset(&stBufConf ,  0 , sizeof(stBufConf));
+                        memset(&stBufInfo ,  0 , sizeof(stBufInfo));
+                        memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
+
+                        stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
+                        stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
+                        stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
+                        stSysChnInputPort.u32PortId = portId;
+
+                        MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
+                        stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
+                        stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+                        stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                        stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                        stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
+                        if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
+                        {
+                            data_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight * 4;
+                            memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->pYuvData, data_size);
+                            s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
+                            if(s32Ret != MI_SUCCESS)
+                            {
+                                AMIGOS_ERR("put buf err is %x\n", s32Ret);
+                            }
+                        }
+                        else
+                        {
+                            AMIGOS_ERR("get port buf err is %x\n", s32Ret);
+                        }
+                    }
+                    break;
+                    case E_STREAM_RGB_BAYER_BASE...E_STREAM_RGB_BAYER_MAX:
+                    {
+                        memset(&stBufConf ,  0 , sizeof(stBufConf));
+                        memset(&stBufInfo ,  0 , sizeof(stBufInfo));
+                        memset(&stSysChnInputPort, 0, sizeof(stSysChnInputPort));
+
+                        stSysChnInputPort.eModId = (MI_ModuleId_e)pInstance->stModDesc.modId;
+                        stSysChnInputPort.u32DevId = pInstance->stModDesc.devId;
+                        stSysChnInputPort.u32ChnId = pInstance->stModDesc.chnId;
+                        stSysChnInputPort.u32PortId = portId;
+
+                        MI_SYS_GetCurPts(&stBufConf.u64TargetPts);
+                        stBufConf.eBufType = E_MI_SYS_BUFDATA_FRAME;
+                        stBufConf.stFrameCfg.eFrameScanMode = E_MI_SYS_FRAME_SCAN_MODE_PROGRESSIVE;
+                        stBufConf.stFrameCfg.u16Width = pStreamData->stInfo.stFrameInfo.streamWidth;
+                        stBufConf.stFrameCfg.u16Height = pStreamData->stInfo.stFrameInfo.streamHeight;
+                        stBufConf.stFrameCfg.eFormat = (MI_SYS_PixelFormat_e)pStreamData->stInfo.eStreamType;
+                        if(MI_SUCCESS  == (s32Ret = MI_SYS_ChnInputPortGetBuf(&stSysChnInputPort, &stBufConf, &stBufInfo, &hHandle, 0)))
+                        {
+                            data_size = pStreamData->stInfo.stFrameInfo.streamWidth * pStreamData->stInfo.stFrameInfo.streamHeight;
+                            memcpy(stBufInfo.stFrameData.pVirAddr[0], pStreamData->pYuvData, data_size);
+                            s32Ret = MI_SYS_ChnInputPortPutBuf(hHandle, &stBufInfo, FALSE);
+                            if(s32Ret != MI_SUCCESS)
+                            {
+                                AMIGOS_ERR("put buf err is %x\n", s32Ret);
+                            }
+                        }
+                        else
+                        {
+                            AMIGOS_ERR("get port buf err is %x\n", s32Ret);
+                        }
+                    }
+                    break;
+#endif
+					default:
+                        AMIGOS_ERR("Not support!!\n");
+                        assert(0);
+                        break;
+                }
             }
             break;
-            case E_STREAM_PCM:
+            case E_STREAM_VIDEO_CODEC_DATA:
             {
-#ifdef INTERFACE_AO
-                unsigned int modId = pInstance->stModDesc.modId;
-                if(modId == E_SYS_MOD_AO)
+                switch (pStreamData->stInfo.stEsInfo.enVideoCodecFmt)
                 {
-                    MI_AUDIO_Frame_t stAoFrame;
 
-                    memset(&stAoFrame, 0, sizeof(MI_AUDIO_Frame_t));
-                    switch (pStreamData->stInfo.stPcmInfo.uintBitLength)
+                case E_STREAM_H264:
+                case E_STREAM_H265:
+                case E_STREAM_JPEG:
+                {
+#ifdef INTERFACE_VDEC
+                    unsigned int modId = pInstance->stModDesc.modId;
+
+                    if (modId == E_SYS_MOD_VDEC)
                     {
+                        MI_U64 u64Pts = 0;
+                        MI_VDEC_VideoStream_t stVdecStream;
+
+                        if (!pStreamData->stEsData.uintPackCnt)
+                        {
+                            return;
+                        }
+                        if (pStreamData->stEsData.uintPackCnt == 1 && pStreamData->stEsData.pDataAddr[0].bSliceEnd && pInstance->uintRecvEsBufferSize == 0)
+                        {
+                            memset(&stVdecStream, 0x0, sizeof(stVdecStream));
+                            stVdecStream.pu8Addr = (MI_U8 *)pStreamData->stEsData.pDataAddr[0].pData;
+                            stVdecStream.u32Len = pStreamData->stEsData.pDataAddr[0].uintDataSize;
+                            stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
+                            stVdecStream.bEndOfFrame = 1;
+                            stVdecStream.bEndOfStream = 0;
+                            //AMIGOS_INFO("Addr %p len %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len);
+                            s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
+                            if (MI_SUCCESS != s32Ret)
+                            {
+                                AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                            }
+                        }
+                        else
+                        {
+                            char *pTempBuffer = NULL;
+                            unsigned int i = 0;
+
+                            if (!pInstance->pRecvEsBuffer)
+                            {
+                                pInstance->pRecvEsBuffer = (char *)malloc(1024 * 1024);
+                                ASSERT(pInstance->pRecvEsBuffer);
+                            }
+                            for (i = 0; i < pStreamData->stEsData.uintPackCnt; i++)
+                            {
+                                if (pInstance->uintRecvEsBufferSize + pStreamData->stEsData.pDataAddr[i].uintDataSize > 1024 * 1024)
+                                {
+                                    pInstance->uintRecvEsBufferSize = 0;
+                                }
+                                //AMIGOS_INFO("Copy %p data size %d\n", pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                                pTempBuffer = pInstance->pRecvEsBuffer + pInstance->uintRecvEsBufferSize;
+                                memcpy(pTempBuffer, pStreamData->stEsData.pDataAddr[i].pData, pStreamData->stEsData.pDataAddr[i].uintDataSize);
+                                pInstance->uintRecvEsBufferSize += pStreamData->stEsData.pDataAddr[i].uintDataSize;
+                                if (pStreamData->stEsData.pDataAddr[i].bSliceEnd)
+                                {
+                                    memset(&stVdecStream, 0x0, sizeof(stVdecStream));
+                                    stVdecStream.pu8Addr = (MI_U8 *)pInstance->pRecvEsBuffer;
+                                    stVdecStream.u32Len = pInstance->uintRecvEsBufferSize;
+                                    stVdecStream.u64PTS = u64Pts + _GetPts(((MI_U32)30));
+                                    stVdecStream.bEndOfFrame = 1;
+                                    stVdecStream.bEndOfStream = 0;
+                                    //AMIGOS_INFO("Send Addr %p len %d id %d\n", stVdecStream.pu8Addr, stVdecStream.u32Len, i);
+                                    s32Ret = MI_VDEC_SendStream(pInstance->stModDesc.chnId, &stVdecStream, 20);
+                                    if (MI_SUCCESS != s32Ret)
+                                    {
+                                        AMIGOS_ERR("MI_VDEC_SendStream fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                                    }
+                                    pInstance->uintRecvEsBufferSize = 0;
+                                }
+                            }
+                        }
+                    }
+#endif
+                }
+                break;
+                default:
+                    AMIGOS_ERR("Not support!!\n");
+                    assert(0);
+                    break;
+                }
+            }
+            break;
+            case E_STREAM_AUDIO_CODEC_DATA:
+            {
+                switch (pStreamData->stInfo.stPcmInfo.enAudioCodecFmt)
+                {
+                case E_STREAM_PCM:
+                {
+#ifdef INTERFACE_AO
+                    unsigned int modId = pInstance->stModDesc.modId;
+                    if (modId == E_SYS_MOD_AO)
+                    {
+                        MI_AUDIO_Frame_t stAoFrame;
+
+                        memset(&stAoFrame, 0, sizeof(MI_AUDIO_Frame_t));
+                        switch (pStreamData->stInfo.stPcmInfo.uintBitLength)
+                        {
                         case 16:
                             stAoFrame.eBitwidth = E_MI_AUDIO_BIT_WIDTH_16;
                             break;
@@ -1455,23 +1567,31 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
                             break;
                         default:
                             ASSERT(0);
-                    }
-                    stAoFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_STEREO;
+                        }
+                        stAoFrame.eSoundmode = E_MI_AUDIO_SOUND_MODE_STEREO;
 #ifndef SSTAR_CHIP_I2
-                    stAoFrame.u32Len = stAoFrame.u32SrcPcmLen = pStreamData->stPcmData.uintSize;
+                        stAoFrame.u32Len = stAoFrame.u32SrcPcmLen = pStreamData->stPcmData.uintSize;
 #else
-                    stAoFrame.u32Len = pStreamData->stPcmData.uintSize;
+                        stAoFrame.u32Len = pStreamData->stPcmData.uintSize;
 #endif
-                    stAoFrame.apVirAddr[0] = pStreamData->stPcmData.pData;
-                    //printf("Send ao p %p size %d\n", pStreamInfo->stPcmInfo.pData, stAoFrame.u32SrcPcmLen);
-                    if (MI_SUCCESS != MI_AO_SendFrame((MI_AUDIO_DEV)pInstance->stModDesc.devId, (MI_AO_CHN)pInstance->stModDesc.chnId, &stAoFrame, 40))
-                    {
-                        AMIGOS_ERR("MI_AO_SendFrame fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                        stAoFrame.apVirAddr[0] = pStreamData->stPcmData.pData;
+                        //printf("Send ao p %p size %d\n", pStreamInfo->stPcmInfo.pData, stAoFrame.u32SrcPcmLen);
+                        if (MI_SUCCESS != MI_AO_SendFrame((MI_AUDIO_DEV)pInstance->stModDesc.devId, (MI_AO_CHN)pInstance->stModDesc.chnId, &stAoFrame, 40))
+                        {
+                            AMIGOS_ERR("MI_AO_SendFrame fail, chn:%d, 0x%X\n", pInstance->stModDesc.chnId, s32Ret);
+                        }
                     }
-                }
 #endif
+                }
+                break;
+                default:
+                    AMIGOS_ERR("Not support!!\n");
+                    assert(0);
+                    break;
+                }
             }
             break;
+
             default:
                 AMIGOS_ERR("Not support!!\n");
                 assert(0);

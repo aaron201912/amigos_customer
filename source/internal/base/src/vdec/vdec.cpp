@@ -34,7 +34,8 @@ void Vdec::LoadDb()
         stDecOutInfo.uintDecOutWidth = GetIniInt(itVdecOut->second.curIoKeyString, "VID_W");
         stDecOutInfo.uintDecOutHeight = GetIniInt(itVdecOut->second.curIoKeyString, "VID_H");
         vDecOutInfo.push_back(stDecOutInfo);
-        itVdecOut->second.stStreanInfo.eStreamType = E_STREAM_YUV420;
+        itVdecOut->second.stStreanInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+        itVdecOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = E_STREAM_YUV420;
         itVdecOut->second.stStreanInfo.stFrameInfo.streamWidth = stDecOutInfo.uintDecOutWidth;
         itVdecOut->second.stStreanInfo.stFrameInfo.streamHeight = stDecOutInfo.uintDecOutHeight;
     }
@@ -47,7 +48,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
     memset(&stVdecChnAttr, 0, sizeof(MI_VDEC_ChnAttr_t));
     MI_VDEC_GetChnAttr((MI_VDEC_CHN)stModDesc.chnId, &stVdecChnAttr);
 
-    switch (pInfo->eStreamType)
+    switch (pInfo->stEsInfo.enVideoCodecFmt)
     {
         case E_STREAM_H264:
             eCodecType = E_MI_VDEC_CODEC_TYPE_H264;
@@ -59,7 +60,7 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
             eCodecType = E_MI_VDEC_CODEC_TYPE_JPEG;
             break;
         default:
-            AMIGOS_ERR("Fmt error %d\n", pInfo->eStreamType);
+            AMIGOS_ERR("Fmt error %d\n", pInfo->stEsInfo.enVideoCodecFmt);
             ASSERT(0);
     }
     if (eCodecType != stVdecChnAttr.eCodecType)
@@ -88,11 +89,6 @@ void Vdec::Incoming(stStreamInfo_t *pInfo)
         }
     }
 }
-void Vdec::Outcoming()
-{
-    MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
-    MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
-}
 void Vdec::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
 {
 #ifndef SSTAR_CHIP_I2
@@ -102,8 +98,8 @@ void Vdec::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
     for (itVdecOut = vDecOutInfo.begin(); itVdecOut != vDecOutInfo.end(); itVdecOut++)
     {
         memset(&stOutputPortAttr, 0, sizeof(MI_VDEC_OutputPortAttr_t));
-        stOutputPortAttr.u16Width = pInfo->stFrameInfo.streamWidth;
-        stOutputPortAttr.u16Height = pInfo->stFrameInfo.streamHeight;
+        stOutputPortAttr.u16Width = pInfo->stEsInfo.streamWidth;
+        stOutputPortAttr.u16Height = pInfo->stEsInfo.streamHeight;
         MI_VDEC_SetOutputPortAttr((MI_VDEC_CHN)stModDesc.chnId, &stOutputPortAttr);
     }
 #endif
@@ -151,4 +147,6 @@ void Vdec::Init()
 }
 void Vdec::Deinit()
 {
+    MI_VDEC_StopChn((MI_VDEC_CHN)stModDesc.chnId);
+    MI_VDEC_DestroyChn((MI_VDEC_CHN)stModDesc.chnId);
 }

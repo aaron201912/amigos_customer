@@ -162,7 +162,8 @@ void Vpe::LoadDb()
         //AMIGOS_INFO("%s : VID_H %d\n", itVpeOut->second.curIoKeyString.c_str(), stVpeOut.intVpeOutHeight);
         stVpeOut.intPortId = itMapVpeOut->second.curPortId;
         vVpeOutInfo.push_back(stVpeOut);
-        itMapVpeOut->second.stStreanInfo.eStreamType = (E_STREAM_TYPE)stVpeOut.intVpeOutFmt;
+        itMapVpeOut->second.stStreanInfo.eStreamType = E_STREAM_VIDEO_RAW_DATA;
+        itMapVpeOut->second.stStreanInfo.stFrameInfo.enVideoRawFmt = (E_VIDEO_RAW_FORMAT)stVpeOut.intVpeOutFmt;
         itMapVpeOut->second.stStreanInfo.stFrameInfo.streamWidth = stVpeOut.intVpeOutWidth;
         itMapVpeOut->second.stStreanInfo.stFrameInfo.streamHeight = stVpeOut.intVpeOutHeight;
     }

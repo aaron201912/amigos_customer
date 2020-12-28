@@ -90,9 +90,10 @@ void Venc::LoadDb()
     stVencInfo.intEncodeFps = GetIniInt(stModDesc.modKeyString,"EN_FPS");
     stVencInfo.intMultiSlice = GetIniInt(stModDesc.modKeyString,"MULTI_SLICE");
     stVencInfo.intSliceRowCnt = GetIniInt(stModDesc.modKeyString,"SLICE_ROW_CNT");
-    mapModOutputInfo[0].stStreanInfo.eStreamType = (E_STREAM_TYPE)stVencInfo.intEncodeType;
-    mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamWidth = stVencInfo.intWidth;
-    mapModOutputInfo[0].stStreanInfo.stFrameInfo.streamHeight = stVencInfo.intHeight;
+    mapModOutputInfo[0].stStreanInfo.eStreamType = E_STREAM_VIDEO_CODEC_DATA; 
+    mapModOutputInfo[0].stStreanInfo.stEsInfo.enVideoCodecFmt = (E_VIDEO_CODEC_FORMAT)stVencInfo.intEncodeType;
+    mapModOutputInfo[0].stStreanInfo.stEsInfo.streamWidth = stVencInfo.intWidth;
+    mapModOutputInfo[0].stStreanInfo.stEsInfo.streamHeight = stVencInfo.intHeight;
 }
 void Venc::Init()
 {
@@ -223,13 +224,13 @@ void Venc::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
     stStreamInfo_t stPreStreamInfo;
 
     GetInputStreamInfo(0, &stPreStreamInfo);
-    stPreStreamInfo.stFrameInfo.streamWidth = pInfo->stFrameInfo.streamWidth;
-    stPreStreamInfo.stFrameInfo.streamHeight = pInfo->stFrameInfo.streamHeight;
+    stVencInfo.intWidth = stPreStreamInfo.stEsInfo.streamWidth = pInfo->stEsInfo.streamWidth;
+    stVencInfo.intHeight = stPreStreamInfo.stEsInfo.streamHeight = pInfo->stEsInfo.streamHeight;
     UpdateInputStreamInfo(0, &stPreStreamInfo);
-    stVencInfo.intEncodeType = pInfo->eStreamType;
+    stVencInfo.intEncodeType = (int)pInfo->stEsInfo.enVideoCodecFmt;
     Deinit();
     Init();
-    AMIGOS_INFO("Venc reset out to w %d h %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType);
+    AMIGOS_INFO("Venc reset out to w %d h %d type %d format %d\n", pInfo->stFrameInfo.streamWidth, pInfo->stFrameInfo.streamHeight, pInfo->eStreamType, pInfo->stEsInfo.enVideoCodecFmt);
 }
 
 void Venc::Deinit()

@@ -27,7 +27,6 @@ class Ao: public Sys
         virtual void Init();
         virtual void Deinit();
         virtual void Incoming(stStreamInfo_t *pInfo);
-        virtual void Outcoming();
         int intAoDevVolume;
 };
 #endif

@@ -32,7 +32,7 @@ class Snr: public Sys
         virtual void LoadDb();
         void GetInfo(stSnrInfo_t &info)
         {
-           info = stSnrInfo;
+            info = stSnrInfo;
         }
         void UpdateInfo(stSnrInfo_t &info)
         {

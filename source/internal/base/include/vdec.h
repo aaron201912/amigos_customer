@@ -41,7 +41,6 @@ private:
     virtual void Init();
     virtual void Deinit();
     virtual void Incoming(stStreamInfo_t *pInfo);
-    virtual void Outcoming();
     virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo);
     stVdecInfo_t stVdecInfo;
     std::vector<stDecOutInfo_t> vDecOutInfo;

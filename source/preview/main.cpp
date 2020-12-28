@@ -11,6 +11,7 @@
  Information is unlawful and strictly prohibited. Sigmastar hereby reserves the
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
+#include <iostream>
 
 #include <stdio.h>
 #include "sys.h"
@@ -158,6 +159,85 @@ void Sys::Implement(std::string &strKey)
 
     return;
 }
+static void ResChange()
+{
+    unsigned int uintInport = 0;
+    unsigned int uintResChoice = 0;
+    char strBlockName[32];
+    char strGet[32];
+    Sys *pClass = NULL;
+    stModDesc_t stModDesc;
+    stStreamInfo_t stStreamInfo;
+    struct astTempSize_s
+    {
+        unsigned int uintWidth;
+        unsigned int uintHeight;
+    } astTempSize[] = {{352, 288}, {640, 360}, {640, 480}, {720, 480}, {720, 576}, {960, 540}, {1280, 720}, {960, 1080},
+                       {1600, 1200}, {1920, 1080}, {2048, 1536}, {2592, 1944}, {3072, 2048}, {3840, 2160}};
+
+    while (1)
+    {
+        std::string strBlock;
+        memset(strBlockName, 0, 32);
+        memset(strGet, 0, 32);
+        std::cout << ">====================Resolution change main menu ====================<" << std::endl;
+        std::cout << "Please type block name and input port (name:x)." << std::endl;
+        std::cout << "Type 'q' to exit resolution change memu." << std::endl;
+        std::cout << ">====================Resolution change main menu ====================<" << std::endl;
+        fflush(stdin);
+        scanf("%s", strGet);
+        if (strncmp("p", strGet, 1) == 0)
+        {
+            continue;
+        }
+        else if (!strncmp("q", strGet, 1))
+        {
+            break;
+        }
+        sscanf(strGet, "%[^:] : %d", strBlockName, &uintInport);
+        strBlock = strBlockName;
+        pClass = Sys::GetInstance(strBlock);
+        if (!pClass)
+        {
+            std::cout << "Not found " << strBlockName << std::endl;
+            continue;
+        }
+        while (1)
+        {
+            pClass->GetInputStreamInfo(uintInport, &stStreamInfo);
+            std::cout << ">====================Resolution change sub menu ====================<" << std::endl;
+            pClass->GetModDesc(stModDesc);
+            std::cout << "Current mod is " << stModDesc.modKeyString << std::endl;
+            std::cout << "Mod id is " << stModDesc.modId << std::endl;
+            std::cout << "Channel id is " << stModDesc.chnId << std::endl;
+            std::cout << "Device id is " << stModDesc.devId << std::endl;
+            for (unsigned int i = 0; i < sizeof(astTempSize) / sizeof(struct astTempSize_s); i++)
+            {
+                std::cout << "Type " << i << " to change resolution to " << astTempSize[i].uintWidth << 'x' << astTempSize[i].uintHeight     \
+                    << ((stStreamInfo.stFrameInfo.streamWidth == astTempSize[i].uintWidth && stStreamInfo.stFrameInfo.streamHeight == astTempSize[i].uintHeight) ? (".<===") : ".") << std::endl;
+            }
+            std::cout << "Type 'q' to exit resolution change memu." << std::endl;
+            std::cout << ">====================Resolution change sub menu ====================<" << std::endl;
+            fflush(stdin);
+            scanf("%s", strGet);
+            if (strncmp("p", strGet, 1) == 0)
+            {
+                continue;
+            }
+            else if (!strncmp("q", strGet, 1))
+            {
+                break;
+            }
+            uintResChoice = atoi(strGet);
+            if (uintResChoice < sizeof(astTempSize) / sizeof(struct astTempSize_s))
+            {
+                stStreamInfo.stFrameInfo.streamWidth = astTempSize[uintResChoice].uintWidth;
+                stStreamInfo.stFrameInfo.streamHeight = astTempSize[uintResChoice].uintHeight;
+                pClass->UpdateInputStreamInfo(uintInport, &stStreamInfo);
+            }
+        }
+    }
+}
 void SelectIni(std::string &strIni, std::map<std::string, unsigned int> &mapModId)
 {
     Sys::InitSys(strIni, mapModId);
@@ -207,6 +287,7 @@ int main(int argc, char **argv)
         {
             printf("Press '%d' to run: %s\n", i, vectIniFiles[i].c_str());
         }
+        printf("Press 'm' to enter resolution change menu!\n");
         printf("Press 'q' to exit!\n");
         fflush(stdin);
         scanf("%4s", idx);
@@ -218,8 +299,13 @@ int main(int argc, char **argv)
             }
             break;
         }
-        if (strncmp("p", idx, 1) == 0)
+        else if (strncmp("p", idx, 1) == 0)
         {
+            continue;
+        }
+        else if (strncmp("m", idx, 1) == 0)
+        {
+            ResChange();
             continue;
         }
         sel = atoi(idx);
