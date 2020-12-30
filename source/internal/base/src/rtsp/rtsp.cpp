@@ -775,7 +775,7 @@ void Rtsp::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsi
                     ASSERT(0);
             }
         }
-	break;
+        break;
         default:
             ASSERT(0);
     }
