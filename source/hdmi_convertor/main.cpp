@@ -42,30 +42,37 @@ typedef enum
 {
     EN_CUST_CMD_GET_STATE,
     EN_CUST_CMD_GET_AUDIO_INFO,
+    EN_CUST_CMD_CONFIG_I2S,
     EN_CUST_CMD_MAX
-}EN_TC358743_SENSOR_STATE;
+}SS_HdmiConv_UsrCmd_e;
+
 typedef enum
 {
-    E_S0_STATUS_POWEROFF,
-    E_RS1_STATUS_SETEDID,
-    E_RS2_STATUS_SETHPDO,
-    E_RS3_STATUS_ENMIPIOUT,
-    E_RS4_STATUS_NOSIGNAL,
-    E_RS5_STATUS_NOCONNECTION,
-}Tcxbg_state_e;
-typedef struct
+    EN_SIGNAL_NO_CONNECTION,
+    EN_SIGNAL_CONNECTED,
+    EN_SIGNAL_LOCK
+}SS_HdmiConv_SignalInfo_e;
+typedef enum
 {
-    unsigned char bPcmData;
-    unsigned char ucharBitWidth;
-    unsigned char ucharChannels;
-    unsigned int uintSampleRate;
-}Tcxbg_audio_info_t;
+    EN_AUDIO_TYPE_PCM,
+    EN_AUDIO_TYPE_AC3,
+    EN_AUDIO_TYPE_AAC,
+    EN_AUDIO_TYPE_DTS
+}SS_HdmiConv_AudFormat_e;
+typedef struct SS_HdmiConv_AudInfo_s
+{
+    SS_HdmiConv_AudFormat_e enAudioFormat;
+    MI_U8 u8ChannelCount;
+    MI_U8 u8BitWidth;     /*16bit, 24bit, 32bit*/
+    MI_U32 u32SampleRate; /*48000, 44100, 32000, 16000, 8000*/
+}SS_HdmiConv_AudInfo_t;
+
 typedef struct
 {
     std::vector<Sys *> * pVectVideoPipeLine;
     std::vector<Sys *> * pVectNoSignalVideoPipeLine;
     Sys * pDstObject;
-    Tcxbg_state_e enCurState;
+    SS_HdmiConv_SignalInfo_e enCurState;
 }stMonitorDataPackage_t;
 
 typedef enum
@@ -461,7 +468,7 @@ void *Tc358743xbgDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
         break;
         case E_EXIT_MONITOR:
         {
-            if (pstPackage->enCurState == E_RS3_STATUS_ENMIPIOUT)
+            if (pstPackage->enCurState == EN_SIGNAL_LOCK)
             {
                 ES8156_Deinit();
                 printf("Signal lock need release!\n");
@@ -484,9 +491,9 @@ void *Tc358743xbgDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
 
 static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
 {
-    Tcxbg_state_e enTcState;
+    SS_HdmiConv_SignalInfo_e enTcState;
     stMonitorDataPackage_t *pstPackage;
-    Tcxbg_audio_info_t stAudioInfo;
+    SS_HdmiConv_AudInfo_t stAudioInfo;
     Sys *pSrcOb = NULL;
     Sys *pSrcObNew = NULL;
 
@@ -497,13 +504,13 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         printf("Pipe line is empty!\n");
         return NULL;
     }
-    MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_STATE, sizeof(Tcxbg_state_e), (void *)&enTcState, E_MI_SNR_CUSTDATA_TO_USER);
-    if (pstPackage->enCurState != E_RS3_STATUS_ENMIPIOUT && enTcState == E_RS3_STATUS_ENMIPIOUT)
+    MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_STATE, sizeof(SS_HdmiConv_UsrCmd_e), (void *)&enTcState, E_MI_SNR_CUSTDATA_TO_USER);
+    if (pstPackage->enCurState != EN_SIGNAL_LOCK && enTcState == EN_SIGNAL_LOCK)
     {
-        MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(Tcxbg_audio_info_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
-        printf("Signal lock %d pcm %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.bPcmData, stAudioInfo.uintSampleRate, stAudioInfo.ucharBitWidth, stAudioInfo.ucharChannels);
+        MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
+        printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
         ES8156_Init();
-        ES8156_SelectWordLength(stAudioInfo.ucharBitWidth);
+        ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
 
         pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
         pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
@@ -518,7 +525,7 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         printf("Release file done !\n");
 
     }
-    else if (pstPackage->enCurState == E_RS3_STATUS_ENMIPIOUT && enTcState != E_RS3_STATUS_ENMIPIOUT)
+    else if (pstPackage->enCurState == EN_SIGNAL_LOCK && enTcState != EN_SIGNAL_LOCK)
     {
         ES8156_Deinit();
         printf("Signal unlock %d\n", enTcState);
@@ -545,7 +552,7 @@ static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<
     EN_TC_MonitorCmd_e enCmd;
 
     memset(&stTmpPackage, 0, sizeof(stMonitorDataPackage_t));
-    stTmpPackage.enCurState = E_S0_STATUS_POWEROFF;
+    stTmpPackage.enCurState = EN_SIGNAL_NO_CONNECTION;
     stTmpPackage.pVectVideoPipeLine = pVectVideoPipeLine;
     stTmpPackage.pVectNoSignalVideoPipeLine = pVectNoSignalVideoPipeLine;
     stTmpPackage.pDstObject = pDstObj;
