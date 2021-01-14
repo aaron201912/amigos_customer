@@ -38,7 +38,6 @@
         }                                           \
     }while(0);
 
-
 #define DEBUG(fmt, args...) //printf(fmt, ##args);
 #define TRACE(fmt, args...) //printf(fmt, ##args);
 #define INFO(fmt, args...) //printf(fmt, ##args);
@@ -83,8 +82,8 @@ typedef struct ST_TEM_NODE_s{
     unsigned int intTotalListCnt; // List total count.
     struct list_head stDataListHead; // Tem data event list head of ST_TEM_DATA_NODE.
     struct list_head stTemNodeList; // Tem node.
-    unsigned int maxEventCout; //Event max 
-    unsigned int maxDataCnt; //data max 
+    unsigned int maxEventCout; //Event max
+    unsigned int maxDataCnt; //data max
     unsigned char bDropEvent;  //b Drop event
     unsigned char bDropData;  //b Drop data
 }ST_TEM_NODE;
@@ -224,15 +223,109 @@ static EN_TEM_STATUS _TemPopEvent(ST_TEM_NODE *pTemNode, ST_TEM_USER_DATA *pstDa
     free(pNode);
     return enRev;
 }
+static void _TemEventMonitor(ST_TEM_NODE *pTempNode, unsigned int *pu32TimeOut, unsigned char *bRunOneShotFb, unsigned char *pbRun)
+{
+    unsigned short u16DropEvent = 0;
+    ST_TEM_USER_DATA stData;
+    EN_TEM_STATUS enTemThrSt;
+
+    while (1)
+    {
+        enTemThrSt = _TemPopEvent(pTempNode, &stData, &pTempNode->pTemInfo->data_mutex);
+        if (E_TEM_IDLE == enTemThrSt)
+        {
+            break;
+        }
+        switch (enTemThrSt)
+        {
+            case E_TEM_EXIT:
+                {
+                    INFO("Exit thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                    *pbRun = 0;
+                    *pu32TimeOut = 0;
+                }
+                break;
+            case E_TEM_STOP:
+                {
+                    INFO("Stop thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                    *pu32TimeOut = 0xFFFFFFFF;
+                }
+                break;
+            case E_TEM_START_MONITOR:
+                {
+                    INFO("Start thread monitor id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                    *pu32TimeOut = pTempNode->pTemAttr->u32ThreadTimeoutMs;
+                }
+                break;
+            case E_TEM_START_ONESHOT:
+                {
+                    INFO("Start one shot thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                    *bRunOneShotFb = 1;
+                    *pu32TimeOut = pTempNode->pTemAttr->u32ThreadTimeoutMs;
+                }
+                break;
+            case E_TEM_DO_USER_DATA:
+                {
+                    if (u16DropEvent)
+                    {
+                        //ERROR("Do user data thread id:[%x], name[%s] Drop event!\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                        if (pTempNode->pTemAttr->fpThreadDropEvent)
+                        {
+                            pTempNode->pTemAttr->fpThreadDropEvent(pTempNode->pTemAttr->stTemBuf, stData);
+                        }
+                    }
+                    else
+                    {
+                        INFO("Do user data thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
+                        if (pTempNode->pTemAttr->fpThreadDoSignal)
+                        {
+                            pTempNode->pTemAttr->fpThreadDoSignal(pTempNode->pTemAttr->stTemBuf, stData);
+                        }
+                    }
+                    if (stData.u32UserDataSize != 0)
+                    {
+                        INFO("Free buffer %lu\n", (unsigned long)stData.pUserData);
+                        free(stData.pUserData);
+                        stData.pUserData = NULL;
+                    }
+                }
+                break;
+            case E_TEM_DROP_USER_DATA:
+                {
+                    u16DropEvent++;
+                    ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
+                }
+                break;
+            case E_TEM_DROP_USER_DATA_END:
+                {
+                    u16DropEvent--;
+                    ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
+                }
+                break;
+            default:
+                {
+                    ERROR("Error tem thread event.id:[%x], name[%s]![%d]",  (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, enTemThrSt);
+                }
+                break;
+        }
+    }
+    if (*pbRun == 0)
+    {
+        INFO("TEM name [%s]: Bye bye~\n", pTempNode->pThreadName);
+
+        return;
+    }
+
+    return;
+}
 static void *_TemThreadMain(void * pArg)
 {
     ST_TEM_NODE *pTempNode = (ST_TEM_NODE *)pArg;
     int intCondWaitRev = 0;
     struct timespec stOuttime;
-    unsigned char bRunOneShot = 0;
-    unsigned short u16DropEvent = 0;
     unsigned int u32FuncRunTime = 0;
     unsigned char bRun = 1;
+    unsigned char bRunOneShot = 0;
     unsigned int u32TimeOut = 0xFFFFFFFF;
 
     if(pTempNode == NULL)
@@ -240,161 +333,101 @@ static void *_TemThreadMain(void * pArg)
         ERROR("Error pArg is NULL!!\n");
         return NULL;
     }
-    PTH_RET_CHK(pthread_mutex_lock(&pTempNode->pTemInfo->mutex));
     prctl(PR_SET_NAME, (unsigned long)pTempNode->pThreadName);
     memset(&stOuttime, 0, sizeof(struct timespec));
-    while (1)
+    while (bRun)
     {
-        u32FuncRunTime = _GetTime0();
-        if ((intCondWaitRev == ETIMEDOUT)  \
-                && pTempNode->pTemAttr->fpThreadWaitTimeOut)
-        {
-            if (bRunOneShot)
-            {
-                pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
-                u32TimeOut = 0xFFFFFFFF;
-                bRunOneShot = 0;
-            }
-            else
-            {
-                pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
-            }
-        }
-        ST_TEM_USER_DATA stData;
-        EN_TEM_STATUS enTemThrSt;
         while (1)
         {
-            enTemThrSt = _TemPopEvent(pTempNode, &stData, &pTempNode->pTemInfo->data_mutex);
-            if (E_TEM_IDLE == enTemThrSt)
-            {
+            _TemEventMonitor(pTempNode, &u32TimeOut, &bRunOneShot, &bRun);
+            if (!bRun)
+                return NULL;
+            if (u32TimeOut)
                 break;
-            }
-            switch (enTemThrSt)
+            if (pTempNode->pTemAttr->fpThreadWaitTimeOut)
             {
-                case E_TEM_EXIT:
-                    {
-                        INFO("Exit thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        bRun = 0;
-                        u32TimeOut = 0;
-                    }
+                if (bRunOneShot)
+                {
+                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
+                    u32TimeOut = 0xFFFFFFFF;
+                    bRunOneShot = 0;
                     break;
-                case E_TEM_STOP:
-                    {
-                        INFO("Stop thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        u32TimeOut = 0xFFFFFFFF;
-                    }
+                }
+                else
+                {
+                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
+                }
+            }
+        }
+        PTH_RET_CHK(pthread_mutex_lock(&pTempNode->pTemInfo->mutex));
+        while (1)
+        {
+            u32FuncRunTime = _GetTime0();
+            if (pTempNode->pTemAttr->fpThreadWaitTimeOut && intCondWaitRev == ETIMEDOUT)
+            {
+                if (bRunOneShot)
+                {
+                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
+                    u32TimeOut = 0xFFFFFFFF;
+                    bRunOneShot = 0;
                     break;
-                case E_TEM_START_MONITOR:
-                    {
-                        INFO("Start thread monitor id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        u32TimeOut = pTempNode->pTemAttr->u32ThreadTimeoutMs;
-                    }
-                    break;
-                case E_TEM_START_ONESHOT:
-                    {
-                        INFO("Start one shot thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                        bRunOneShot = 1;
-                        u32TimeOut = pTempNode->pTemAttr->u32ThreadTimeoutMs;
-                    }
-                    break;
-                case E_TEM_DO_USER_DATA:
-                    {
-                        if (u16DropEvent)
-                        {
-                            //ERROR("Do user data thread id:[%x], name[%s] Drop event!\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                            if (pTempNode->pTemAttr->fpThreadDropEvent)
-                            {
-                                pTempNode->pTemAttr->fpThreadDropEvent(pTempNode->pTemAttr->stTemBuf, stData);
-                            }
-                        }
-                        else
-                        {
-                            INFO("Do user data thread id:[%x], name[%s]\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName);
-                            if (pTempNode->pTemAttr->fpThreadDoSignal)
-                            {
-                                pTempNode->pTemAttr->fpThreadDoSignal(pTempNode->pTemAttr->stTemBuf, stData);
-                            }
-                        }
-                        if (stData.u32UserDataSize != 0)
-                        {
-                            INFO("Free buffer %lu\n", (unsigned long)stData.pUserData);
-                            free(stData.pUserData);
-                            stData.pUserData = NULL;
-                        }
-                    }
-                    break;
-                case E_TEM_DROP_USER_DATA:
-                    {
-                        u16DropEvent++;
-                        ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
-                    }
-                    break;
-                case E_TEM_DROP_USER_DATA_END:
-                    {
-                        u16DropEvent--;
-                        ERROR("T[%x],N[%s] Drop event! cnt: %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u16DropEvent);
-                    }
+                }
+                else
+                {
+                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
+                }
+            }
+            _TemEventMonitor(pTempNode, &u32TimeOut, &bRunOneShot, &bRun);
+            if (!bRun)
+                break;
+            if (!u32TimeOut)
+                break;
+            u32FuncRunTime = _GetTime0() - u32FuncRunTime;
+            switch (u32TimeOut)
+            {
+                case 0xFFFFFFFF:
+                    intCondWaitRev = pthread_cond_wait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex);
                     break;
                 default:
-                    {
-                        ERROR("Error tem thread event.id:[%x], name[%s]![%d]",  (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, enTemThrSt);
-                    }
-                    break;
-            }
-        }
-        if (bRun == 0)
-        {
-            INFO("TEM name [%s]: Bye bye~\n", pTempNode->pThreadName);
-            break;
-        }
-        u32FuncRunTime = _GetTime0() - u32FuncRunTime;
-        switch (u32TimeOut)
-        {
-            case 0xFFFFFFFF:
-                intCondWaitRev = pthread_cond_wait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex);
-                break;
-            case 0:
-                intCondWaitRev = ETIMEDOUT;
-                break;
-            default:
-            {
-                struct timespec stCurTime;
-                unsigned char bWait = 0;
-                clock_gettime(CLOCK_MONOTONIC, &stCurTime);
-                if ((stCurTime.tv_sec > stOuttime.tv_sec) \
-                        ||((stCurTime.tv_sec == stOuttime.tv_sec)?(stCurTime.tv_nsec >= stOuttime.tv_nsec):0) \
-                        || pTempNode->pTemAttr->bSignalResetTimer)
                 {
-                    /*         Case 1:
-                     *                   Reset timer flag  is on.
-                     *                   Current time is later than or  equal  the pthread wait time(stOuttime).
-                     *                   In this case stOuttime will do stCurTime+u32ThreadTimeoutMs
-                     *          Case 0:
-                     *                   Current time is smaller than the pthread wait time(stOuttime).
-                     *                   This case must be get cond signal while waitting time out .
-                     *          When first run, and stOuttime is zero and current time is definally larger.
-                     */
-                    memcpy(&stOuttime, &stCurTime, sizeof(struct timespec));
-                    if (u32FuncRunTime < u32TimeOut)
+                    struct timespec stCurTime;
+                    unsigned char bWait = 0;
+                    clock_gettime(CLOCK_MONOTONIC, &stCurTime);
+                    if ((stCurTime.tv_sec > stOuttime.tv_sec) \
+                            ||((stCurTime.tv_sec == stOuttime.tv_sec)?(stCurTime.tv_nsec >= stOuttime.tv_nsec):0) \
+                            || pTempNode->pTemAttr->bSignalResetTimer)
                     {
-                        AddTime(stOuttime, u32TimeOut-u32FuncRunTime);
-                        bWait = 1;
+                        /*         Case 1:
+                         *                   Reset timer flag  is on.
+                         *                   Current time is later than or  equal  the pthread wait time(stOuttime).
+                         *                   In this case stOuttime will do stCurTime+u32ThreadTimeoutMs
+                         *          Case 0:
+                         *                   Current time is smaller than the pthread wait time(stOuttime).
+                         *                   This case must be get cond signal while waitting time out .
+                         *          When first run, and stOuttime is zero and current time is definally larger.
+                         */
+                        memcpy(&stOuttime, &stCurTime, sizeof(struct timespec));
+                        if (u32FuncRunTime < u32TimeOut)
+                        {
+                            AddTime(stOuttime, u32TimeOut - u32FuncRunTime);
+                            bWait = 1;
+                        }
+                        else if (u32TimeOut != 0)
+                        {
+                            WARN("Func run time is too much, and it's larger than monitor wait time!!\n ");
+                        }
                     }
-                    else if (u32TimeOut != 0)
-                    {
-                        WARN("Func run time is too much, and it's larger than monitor wait time!!\n ");
-                    }
+                    if (bWait)
+                        intCondWaitRev = pthread_cond_timedwait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex, &stOuttime);
+                    else
+                        intCondWaitRev = ETIMEDOUT;
                 }
-                if (bWait)
-                    intCondWaitRev = pthread_cond_timedwait(&pTempNode->pTemInfo->cond, &pTempNode->pTemInfo->mutex, &stOuttime);
-                else
-                    intCondWaitRev = ETIMEDOUT;
+                break;
             }
-            break;
+            //INFO("thread id:[%x], name[%s] Func run time %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u32FuncRunTime);
         }
-        //INFO("thread id:[%x], name[%s] Func run time %d\n", (int)pTempNode->pTemInfo->thread, pTempNode->pThreadName, u32FuncRunTime);
+        PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
-    PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
 
     return NULL;
 }
@@ -423,6 +456,15 @@ static ST_TEM_NODE *_TemFindNode(const char* pStr)
     MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
 
     return pTemp;
+}
+static void _TemCondSignal(ST_TEM_NODE *pTempNode)
+{
+    if (pTempNode->pTemInfo->thread != getpid())
+    {
+        PTH_RET_CHK(pthread_mutex_lock(&pTempNode->pTemInfo->mutex));
+        PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
+        PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
+    }
 }
 int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
 {
@@ -501,7 +543,7 @@ int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
         PTH_RET_CHK(pthread_cond_destroy(&pTemp->pTemInfo->cond));
         free(pTemp->pTemInfo);
         pTemp->pTemInfo = NULL;
-        
+
         if (pTemp->pTemAttr->stTemBuf.u32TemBufferSize != 0 && pTemp->pTemAttr->stTemBuf.pTemBuffer != NULL)
         {
             free(pTemp->pTemAttr->stTemBuf.pTemBuffer);
@@ -509,10 +551,10 @@ int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
         }
         free(pTemp->pTemAttr);
         pTemp->pTemAttr = NULL;
-        
+
         free(pTemp->pThreadName);
         pTemp->pThreadName = NULL;
-        
+
         free(pTemp);
         pTemp = NULL;
 
@@ -523,7 +565,6 @@ int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
         list_add_tail(&pTemp->stTemNodeList, &stTemNodeHead);
     }
     MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
-
 
     return 0;
 }
@@ -546,11 +587,9 @@ int TemClose(const char* pStr)
     ASSERT(pTempNode);
 
     _TemPushEvent(pTempNode, E_TEM_EXIT, NULL, &pTempNode->pTemInfo->data_mutex);
-    if (pthread_mutex_trylock(&pTempNode->pTemInfo->mutex) == 0)
-    {
-        PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
-        PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
-    }
+    PTH_RET_CHK(pthread_mutex_lock(&pTempNode->pTemInfo->mutex));
+    PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
+    PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     PTH_RET_CHK(pthread_join(pTempNode->pTemInfo->thread, &retval));
     ASSERT(list_empty(&pTempNode->stDataListHead));
     PTH_RET_CHK(pthread_mutexattr_destroy(&pTempNode->pTemInfo->mutex_attr));
@@ -564,7 +603,7 @@ int TemClose(const char* pStr)
 
     free(pTempNode->pTemInfo);
     pTempNode->pTemInfo = NULL;
-    
+
     if (pTempNode->pTemAttr->stTemBuf.u32TemBufferSize != 0 && pTempNode->pTemAttr->stTemBuf.pTemBuffer != NULL)
     {
         free(pTempNode->pTemAttr->stTemBuf.pTemBuffer);
@@ -572,10 +611,10 @@ int TemClose(const char* pStr)
     }
     free(pTempNode->pTemAttr);
     pTempNode->pTemAttr = NULL;
-    
+
     free(pTempNode->pThreadName);
     pTempNode->pThreadName = NULL;
-    
+
     free(pTempNode);
     pTempNode = NULL;
 
@@ -595,19 +634,8 @@ int TemStartMonitor(const char* pStr)
     {
         return -1;
     }
-    if (pTempNode->pTemInfo->thread == getpid())
-    {
-        _TemPushEvent(pTempNode, E_TEM_START_MONITOR, NULL, &pTempNode->pTemInfo->data_mutex);
-    }
-    else
-    {
-        _TemPushEvent(pTempNode, E_TEM_START_MONITOR, NULL, &pTempNode->pTemInfo->data_mutex);
-        if (pthread_mutex_trylock(&pTempNode->pTemInfo->mutex) == 0)
-        {
-            PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
-            PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
-        }
-    }
+    _TemPushEvent(pTempNode, E_TEM_START_MONITOR, NULL, &pTempNode->pTemInfo->data_mutex);
+    _TemCondSignal(pTempNode);
 
     return 0;
 }
@@ -625,19 +653,8 @@ int TemStartOneShot(const char* pStr)
     {
         return -1;
     }
-    if (pTempNode->pTemInfo->thread == getpid())
-    {
-        _TemPushEvent(pTempNode, E_TEM_START_ONESHOT, NULL, &pTempNode->pTemInfo->data_mutex);
-    }
-    else
-    {
-        _TemPushEvent(pTempNode, E_TEM_START_ONESHOT, NULL, &pTempNode->pTemInfo->data_mutex);
-        if (pthread_mutex_trylock(&pTempNode->pTemInfo->mutex) == 0)
-        {
-            PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
-            PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
-        }
-    }
+    _TemPushEvent(pTempNode, E_TEM_START_ONESHOT, NULL, &pTempNode->pTemInfo->data_mutex);
+    _TemCondSignal(pTempNode);
 
     return 0;
 }
@@ -673,7 +690,6 @@ int TemConfigTimer(const char* pStr, unsigned int u32TimeOut, unsigned char bSig
         PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
     }
 
-
     return 0;
 }
 int TemStop(const char* pStr)
@@ -690,19 +706,8 @@ int TemStop(const char* pStr)
     {
         return -1;
     }
-    if (pTempNode->pTemInfo->thread == getpid())
-    {
-        _TemPushEvent(pTempNode, E_TEM_STOP, NULL, &pTempNode->pTemInfo->data_mutex);
-    }
-    else
-    {
-        _TemPushEvent(pTempNode, E_TEM_STOP, NULL, &pTempNode->pTemInfo->data_mutex);
-        if (pthread_mutex_trylock(&pTempNode->pTemInfo->mutex) == 0)
-        {
-            PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
-            PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
-        }
-    }
+    _TemPushEvent(pTempNode, E_TEM_STOP, NULL, &pTempNode->pTemInfo->data_mutex);
+    _TemCondSignal(pTempNode);
 
     return 0;
 }
@@ -721,35 +726,16 @@ int TemSend(const char* pStr, ST_TEM_USER_DATA stUserData)
     {
         return -1;
     }
-    if (pTempNode->pTemInfo->thread == getpid())
+    if (stUserData.u32UserDataSize != 0)
     {
-        if (stUserData.u32UserDataSize != 0)
-        {
-            pDataBuffer = (void *)malloc(stUserData.u32UserDataSize);
-            ASSERT(pDataBuffer);
-            INFO("Malloc buffer 0x%lx\n", (unsigned long)pDataBuffer);
-            memcpy(pDataBuffer, stUserData.pUserData, stUserData.u32UserDataSize);
-            stUserData.pUserData = pDataBuffer;
-        }
-        _TemPushEvent(pTempNode, E_TEM_DO_USER_DATA, &stUserData, &pTempNode->pTemInfo->data_mutex);
+        pDataBuffer = (void *)malloc(stUserData.u32UserDataSize);
+        ASSERT(pDataBuffer);
+        INFO("Malloc buffer 0x%lx\n", (unsigned long)pDataBuffer);
+        memcpy(pDataBuffer, stUserData.pUserData, stUserData.u32UserDataSize);
+        stUserData.pUserData = pDataBuffer;
     }
-    else
-    {
-        if (stUserData.u32UserDataSize != 0)
-        {
-            pDataBuffer = (void *)malloc(stUserData.u32UserDataSize);
-            ASSERT(pDataBuffer);
-            INFO("Malloc buffer 0x%lx\n", (unsigned long)pDataBuffer);
-            memcpy(pDataBuffer, stUserData.pUserData, stUserData.u32UserDataSize);
-            stUserData.pUserData = pDataBuffer;
-        }
-        _TemPushEvent(pTempNode, E_TEM_DO_USER_DATA, &stUserData, &pTempNode->pTemInfo->data_mutex);
-        if (pthread_mutex_trylock(&pTempNode->pTemInfo->mutex) == 0)
-        {
-            PTH_RET_CHK(pthread_cond_signal(&pTempNode->pTemInfo->cond));
-            PTH_RET_CHK(pthread_mutex_unlock(&pTempNode->pTemInfo->mutex));
-        }
-    }
+    _TemPushEvent(pTempNode, E_TEM_DO_USER_DATA, &stUserData, &pTempNode->pTemInfo->data_mutex);
+    _TemCondSignal(pTempNode);
 
     return 0;
 }
