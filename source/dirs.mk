@@ -25,7 +25,7 @@ endif
 
 -include $(MODULE)/dep.mk
 INC += $(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))
-LIBS += $(foreach m,$(DEP),-l$(m))
+LIBS := $(foreach m,$(DEP),-l$(m)) $(LIBS)
 INC += $(foreach m,$(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),$(DB_3PARTY_PATH)/$(m)/include)
-LIBS += $(foreach m,$(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),-l$(m))
+#LIBS += $(foreach m,$(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),-l$(m))
 LIBS += $(foreach m, $(3RD_PARTY_DEP1) $(3RD_PARTY_DEP0),-L$(DB_3PARTY_PATH)/$(m)/lib/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/$(LINK_TYPE))

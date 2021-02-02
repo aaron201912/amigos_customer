@@ -108,7 +108,7 @@ endif
 endif
 
 $(3RD_PARTY):
-	@$(MAKE) -C $(DB_3PARTY_PATH)/$(patsubst %_3rd_party_all,%,$@)
+	$(MAKE) -C $(DB_3PARTY_PATH)/$(patsubst %_3rd_party_all,%,$@)
 
 $(MODULES_INSTALL):
 	@$(MAKE) MODULE=$(patsubst %_install,%,$@) module_install
