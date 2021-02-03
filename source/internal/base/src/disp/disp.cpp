@@ -27,8 +27,10 @@
 #endif
 #include "mi_disp.h"
 
+#ifdef SSTAR_CHIP_I2M
 #ifdef INTERFACE_PANEL
 #include "SAT070CP50_1024x600.h"
+#endif
 #endif
 
 #include "disp.h"
@@ -152,6 +154,11 @@ void Disp::Init()
 #endif
     std::map<unsigned int, stDispLayerInfo_t>::iterator itMapLayerInfo;
     std::map<unsigned int, stDispLayerInputPortInfo_t>::iterator itMapLayerInportInfo;
+#ifdef SSTAR_CHIP_I6E
+#ifdef INTERFACE_PANEL
+    MI_PANEL_ParamConfig_t stPanelParamCfg;
+#endif
+#endif
     //pub attr
     memset(&stPubAttr, 0, sizeof(MI_DISP_PubAttr_t));
     memset(&stLayerAttr, 0, sizeof(MI_DISP_VideoLayerAttr_t));
@@ -181,6 +188,24 @@ void Disp::Init()
     if (stDispInfo.intDeviceType == 0)
     {
 #ifdef INTERFACE_PANEL
+#ifdef SSTAR_CHIP_I6E
+        MI_PANEL_Init((MI_PANEL_IntfType_e)stDispInfo.intPanelLinkType);
+        MI_PANEL_GetPanelParam((MI_PANEL_IntfType_e)stDispInfo.intPanelLinkType, &stPanelParamCfg);
+        stPubAttr.eIntfSync = E_MI_DISP_OUTPUT_USER;
+        stPubAttr.eIntfType = E_MI_DISP_INTF_LCD;
+        stPubAttr.stSyncInfo.u16Vact = stPanelParamCfg.u16Height;
+        stPubAttr.stSyncInfo.u16Vbb = stPanelParamCfg.u16VSyncBackPorch;
+        stPubAttr.stSyncInfo.u16Vfb = stPanelParamCfg.u16VTotal - (stPanelParamCfg.u16VSyncWidth + stPanelParamCfg.u16Height + stPanelParamCfg.u16VSyncBackPorch);
+        stPubAttr.stSyncInfo.u16Hact = stPanelParamCfg.u16Width;
+        stPubAttr.stSyncInfo.u16Hbb = stPanelParamCfg.u16HSyncBackPorch;
+        stPubAttr.stSyncInfo.u16Hfb = stPanelParamCfg.u16HTotal - (stPanelParamCfg.u16HSyncWidth + stPanelParamCfg.u16Width + stPanelParamCfg.u16HSyncBackPorch);
+        stPubAttr.stSyncInfo.u16Bvact = 0;
+        stPubAttr.stSyncInfo.u16Bvbb = 0;
+        stPubAttr.stSyncInfo.u16Bvfb = 0;
+        stPubAttr.stSyncInfo.u16Hpw = stPanelParamCfg.u16HSyncWidth;
+        stPubAttr.stSyncInfo.u16Vpw = stPanelParamCfg.u16VSyncWidth;
+        stPubAttr.stSyncInfo.u32FrameRate = stPanelParamCfg.u16DCLK*1000000/(stPanelParamCfg.u16HTotal*stPanelParamCfg.u16VTotal);
+#else
         MI_PANEL_Init(stPanelParam.eLinkType);
         MI_PANEL_SetPanelParam(&stPanelParam);
         if(stPanelParam.eLinkType == E_MI_PNL_LINK_MIPI_DSI)
@@ -201,6 +226,7 @@ void Disp::Init()
         stPubAttr.stSyncInfo.u16Hpw = stPanelParam.u16HSyncWidth;
         stPubAttr.stSyncInfo.u16Vpw = stPanelParam.u16VSyncWidth;
         stPubAttr.stSyncInfo.u32FrameRate = stPanelParam.u16DCLK*1000000/(stPanelParam.u16HTotal*stPanelParam.u16VTotal);
+#endif
 #endif
     }
     else if (stDispInfo.intDeviceType == 1)

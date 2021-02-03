@@ -46,7 +46,7 @@ endif
 ifneq ($(interface_iqserver), disable)
 LIBS += -lmi_iqserver
 
-ifneq ($(filter $(CHIP_ALIAS), macaron, pudding, tiramisu),)
+ifneq ($(filter $(CHIP_ALIAS), macaron pudding tiramisu),)
 LIBS += -lfbc_decode
 endif
 endif
