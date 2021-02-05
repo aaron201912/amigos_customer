@@ -278,6 +278,7 @@ typedef enum
     E_SYS_MOD_FILE,
     E_SYS_MOD_UAC,
     E_SYS_MOD_UVC,
+    E_SYS_MOD_EMPTY,
     E_SYS_MOD_MAX
 }E_SYS_MOD;
 typedef struct stModuleAttr_s

@@ -49,5 +49,5 @@ SUBDIRS += $(CUR_DIR)/src/uac
 SUBDIRS += $(CUR_DIR)/src/file
 SUBDIRS += $(CUR_DIR)/src/rtsp
 SUBDIRS += $(CUR_DIR)/src/sys
-SUBDIRS += $(CUR_DIR)/src/dla
+SUBDIRS += $(CUR_DIR)/src/empty
 SUBDIRS += $(CUR_DIR)/src/slot

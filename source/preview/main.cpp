@@ -20,7 +20,7 @@
 #include "vpe.h"
 #include "vif.h"
 #include "divp.h"
-#include "dla.h"
+#include "empty.h"
 #include "ui.h"
 #include "iq.h"
 #include "file.h"
@@ -94,9 +94,9 @@ void Sys::Implement(std::string &strKey)
             }
             break;
 #endif
-            case E_SYS_MOD_DLA:
+            case E_SYS_MOD_EMPTY:
             {
-                SysChild<Dla> Dla(strKey);
+                SysChild<Empty> Empty(strKey);
             }
             break;
 #if INTERFACE_RGN
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
     mapModId["VIF"] = E_SYS_MOD_VIF;
     mapModId["VDISP"] = E_SYS_MOD_VDISP;
     mapModId["LDC"] = E_SYS_MOD_LDC;
-    mapModId["DLA"] = E_SYS_MOD_DLA;
+    mapModId["EMPTY"] = E_SYS_MOD_EMPTY;
     mapModId["UI"] = E_SYS_MOD_UI;
     mapModId["IQ"] = E_SYS_MOD_IQ;
     mapModId["FILE"] = E_SYS_MOD_FILE;

@@ -12,19 +12,26 @@
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
 
-#ifndef __DLA_H__
-#define __DLA_H__
+#ifndef __EMPTY_H__
+#define __EMPTY_H__
 
 #include "sys.h"
 
-class Dla: public Sys
+class Empty: public Sys
 {
     public:
-        Dla();
-        virtual ~Dla();
+        Empty();
+        virtual ~Empty();
     private:
         virtual void Init();
         virtual void Deinit();
+        virtual void BindBlock(stModInputInfo_t & stIn);
+        virtual void UnBindBlock(stModInputInfo_t & stIn);
+        virtual int CreateSender(unsigned int outPortId);
+        virtual int DestroySender(unsigned int outPortId);
+        virtual int StartSender(unsigned int outPortId);
+        virtual int StopSender(unsigned int outPortId);
+        static void DataReceiver(void *pData, unsigned int dataSize, void *pUsrData,  unsigned char portId);
 };
 #endif
 
