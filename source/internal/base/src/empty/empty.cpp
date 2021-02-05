@@ -13,6 +13,7 @@
 */
 
 #include "empty.h"
+#include "mi_sys.h"
 #include <stdio.h>
 
 Empty::Empty()
@@ -26,8 +27,15 @@ Empty::~Empty()
 void Empty::BindBlock(stModInputInfo_t & stIn)
 {
     stModDesc_t stPreDesc;
+    MI_SYS_ChnPort_t stChnPort;
 
+    memset(&stChnPort, 0, sizeof(MI_SYS_ChnPort_t));
     GetInstance(stIn.stPrev.modKeyString)->GetModDesc(stPreDesc);
+    stChnPort.eModId = (MI_ModuleId_e)stPreDesc.modId;
+    stChnPort.u32ChnId = (MI_U32)stPreDesc.chnId;
+    stChnPort.u32PortId = (MI_U32)stIn.stPrev.portId;
+    stChnPort.u32DevId = (MI_U32)stPreDesc.devId;
+    MI_SYS_SetChnOutputPortDepth(&stChnPort, 2, 3);
     AMIGOS_INFO("Bind!! Cur %s modid %d chn %d dev %d port %d fps %d\n", stIn.curIoKeyString.c_str(), stModDesc.modId, stModDesc.chnId, stModDesc.devId, stIn.curPortId, stIn.curFrmRate);
     AMIGOS_INFO("Pre %s modid %d chn %d dev %d port %d fps %d\n", stIn.stPrev.modKeyString.c_str(), stPreDesc.modId, stPreDesc.chnId, stPreDesc.devId, stIn.stPrev.portId, stIn.stPrev.frmRate);
     CreateReceiver(stIn.curPortId, DataReceiver, this);

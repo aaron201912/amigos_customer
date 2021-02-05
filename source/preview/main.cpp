@@ -31,6 +31,8 @@
 #include "ao.h"
 #include "slot.h"
 #include "snr.h"
+#include "uac.h"
+#include "uvc.h"
 
 void Sys::Implement(std::string &strKey)
 {
@@ -40,7 +42,7 @@ void Sys::Implement(std::string &strKey)
     intId = Sys::FindBlockId(strKey);
     if (intId == (unsigned int)-1)
     {
-        printf("Can't find key str %s\n", strKey.c_str());
+        AMIGOS_ERR("Can't find key str %s\n", strKey.c_str());
         return;
     }
     if (!Sys::FindBlock(strKey))
@@ -102,7 +104,7 @@ void Sys::Implement(std::string &strKey)
 #if INTERFACE_RGN
             case E_SYS_MOD_UI:
             {
-                SysChild<Ui> Fdfr(strKey);
+                SysChild<Ui> Ui(strKey);
             }
             break;
 #endif
@@ -151,6 +153,16 @@ void Sys::Implement(std::string &strKey)
             }
             break;
 #endif
+            case E_SYS_MOD_UAC:
+            {
+                SysChild<Uac> Uac(strKey);
+            }
+            break;
+            case E_SYS_MOD_UVC:
+            {
+                SysChild<Uvc> Uvc(strKey);
+            }
+            break;
             default:
                 return;
         }
