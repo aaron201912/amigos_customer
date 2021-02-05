@@ -668,7 +668,7 @@ void *Rtsp::ClientMonitor(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stUsrData)
     if (pstEvenv->ucharCmd == 0)
     {
         pstOutInfo->pRtspClient = openURL(*pstOutInfo->env, "rtsp", pstEvenv->pstrUrl);
-        AMIGOS_ERR("Open url client %p\n", pstOutInfo->pRtspClient);
+        AMIGOS_INFO("Open url client %p\n", pstOutInfo->pRtspClient);
     }
     else if (pstEvenv->ucharCmd == 1)
     {

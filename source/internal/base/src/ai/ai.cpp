@@ -59,6 +59,7 @@ void Ai::Init()
     MI_AI_Enable((MI_AUDIO_DEV)stModDesc.devId);
     MI_AI_EnableChn((MI_AUDIO_DEV)stModDesc.devId, (MI_AI_CHN)stModDesc.chnId);
     memset(&stChnParam, 0, sizeof(MI_AI_ChnParam_t));
+    stChnParam.stChnGain.bEnableGainSet = TRUE;
     stChnParam.stChnGain.s16RearGain = stAiInfo.intVolume;
     MI_AI_SetChnParam((MI_AUDIO_DEV)stModDesc.devId, (MI_AI_CHN)stModDesc.chnId, &stChnParam);
     memset(&stChnOutputPort, 0, sizeof(MI_SYS_ChnPort_t));
