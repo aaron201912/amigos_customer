@@ -82,14 +82,13 @@ void File::Init()
         if ((access(itFileOut->second.fileName.c_str(), F_OK)) ==-1)
         {
             AMIGOS_ERR("not access %s file!\n", itFileOut->second.fileName.c_str());
-            return;
+            itFileOut->second.intReadFd = -1;
         }
 
-        itFileOut->second.intreadFd = open(itFileOut->second.fileName.c_str(), O_RDONLY);
-        if(itFileOut->second.intreadFd < 0)
+        itFileOut->second.intReadFd = open(itFileOut->second.fileName.c_str(), O_RDONLY);
+        if(itFileOut->second.intReadFd < 0)
         {
             AMIGOS_ERR("read_file: %s. open fail\n", itFileOut->second.fileName.c_str());
-            return;
         }
     }
 }
@@ -98,7 +97,10 @@ void File::Deinit()
     std::map<unsigned int, stFileOutInfo_t>::iterator it;
     for(it=mapOutputRdFile.begin();it != mapOutputRdFile.end();++it)
     {
-        close(it->second.intreadFd);
+        if (it->second.intReadFd != -1)
+        {
+            close(it->second.intReadFd);
+        }
     }
 }
 void File::BindBlock(stModInputInfo_t & stIn)
@@ -115,14 +117,14 @@ void File::BindBlock(stModInputInfo_t & stIn)
     it = mapInputWrFile.find(stIn.curPortId);
     if (it != mapInputWrFile.end())
     {
-        it->second.intreadFd = open(it->second.fileName.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0777);
-        if (it->second.intreadFd < 0)
+        it->second.intWriteFd = open(it->second.fileName.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0777);
+        if (it->second.intWriteFd < 0)
         {
             AMIGOS_INFO("dest_file: %s.\n", it->second.fileName.c_str());
             perror("open");
             return;
         }
-        CreateReceiver(stIn.curPortId, DataReceiver, (void *)it->second.intreadFd);
+        CreateReceiver(stIn.curPortId, DataReceiver, (void *)it->second.intWriteFd);
         StartReceiver(stIn.curPortId);
     }
 }
@@ -135,7 +137,7 @@ void File::UnBindBlock(stModInputInfo_t & stIn)
     {
         StopReceiver(stIn.curPortId);
         DestroyReceiver(stIn.curPortId);
-        close(it->second.intreadFd);
+        close(it->second.intWriteFd);
     }
 }
 
@@ -367,10 +369,10 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
     stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
     File *pSendClass = dynamic_cast<File *>(pReceiver->pSysClass);
 
-    readfp = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intreadFd;
+    readfp = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intReadFd;
     if(readfp < 0)
     {
-        AMIGOS_ERR("file send file handle is null!\n");
+        AMIGOS_ERR("File[%s] send file handle is null!\n", pSendClass->mapOutputRdFile[pReceiver->uintPort].fileName.c_str());
         return NULL;
     }
 

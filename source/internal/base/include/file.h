@@ -28,7 +28,7 @@
 typedef struct stFileOutInfo_s
 {
     std::string fileName;
-    int intreadFd;
+    int intReadFd;
     int intFileOutType;
     int intFileFmt;
     int intFileOutWidth;
@@ -38,7 +38,7 @@ typedef struct stFileOutInfo_s
 typedef struct stFileInInfo_s
 {
     std::string fileName;
-    int intreadFd;
+    int intWriteFd;
 }stFileInInfo_t;
 
 
