@@ -516,6 +516,28 @@ static void SetVpeOut(MI_U16 u16W, MI_U16 u16H)
     }
     VpeObj->UpdateInfo(stVpeInfo, vVpeOut);
 }
+static void SetVenc(MI_U16 u16W, MI_U16 u16H)
+{
+    Venc *VencObj = NULL;
+    std::string objName;
+    stVencInfo_t stVencInfo;
+    stModInputInfo_t stInputPortInfo;
+
+    objName = "VENC_CH0_DEV0";
+    VencObj = dynamic_cast<Venc *>(Sys::GetInstance(objName));
+    if (!VencObj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        return;
+    }
+    VencObj->GetInfo(stVencInfo);
+    stVencInfo.intWidth = u16W;
+    stVencInfo.intHeight = u16H;
+    VencObj->UpdateInfo(stVencInfo);
+    VencObj->GetInputPortInfo(0, stInputPortInfo);
+    stInputPortInfo.bindPara = u16H;
+    VencObj->UpdateInputPortInfo(0, stInputPortInfo);
+}
 static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
 {
     SS_HdmiConv_SignalInfo_e enTcState;
@@ -545,6 +567,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         u16SnrHeight = stSnrPlane0Info.stCapRect.u16Height;
         if (pstPackage->enCurState != EN_SIGNAL_LOCK)
         {
+
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
             printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
             ES8156_Init();
@@ -553,6 +576,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
             pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
             pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
             SetVpeOut(u16SnrWidth, u16SnrHeight);
+            SetVenc(u16SnrWidth, u16SnrHeight);
             Sys::Insert(*pstPackage->pVectVideoPipeLine);
             printf("Insert video done !\n");
             Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
@@ -569,6 +593,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
             {
                 Sys::Extract(*pstPackage->pVectVideoPipeLine);
                 SetVpeOut(u16SnrWidth, u16SnrHeight);
+                SetVenc(u16SnrWidth, u16SnrHeight);
                 Sys::Insert(*pstPackage->pVectVideoPipeLine);
             }
         }
