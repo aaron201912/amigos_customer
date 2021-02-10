@@ -73,13 +73,15 @@ typedef struct
     std::vector<Sys *> * pVectNoSignalVideoPipeLine;
     Sys * pDstObject;
     SS_HdmiConv_SignalInfo_e enCurState;
+    MI_U16 u16SnrWidth;
+    MI_U16 u16SnrHeight;
 }stMonitorDataPackage_t;
 
 typedef enum
 {
-    E_START_MONITOR,
-    E_EXIT_MONITOR
-}EN_TC_MonitorCmd_e;
+    EN_HDMICONV_START_MONITOR,
+    EN_HDMICONV_EXIT_MONITOR
+}SS_HdmiConv_MonitorCmd_e;
 
 static const unsigned char u8Es8156InitSetting[][2] = {
     {0x02, 0x84},
@@ -449,24 +451,24 @@ void Sys::Implement(std::string &strKey)
 
     return;
 }
-void *Tc358743xbgDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
+void *HdmiConvDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
 {
-    EN_TC_MonitorCmd_e *penCmd;
+    SS_HdmiConv_MonitorCmd_e *penCmd;
     stMonitorDataPackage_t *pstPackage;
 
-    ASSERT(stData.u32UserDataSize == sizeof(EN_TC_MonitorCmd_e));
+    ASSERT(stData.u32UserDataSize == sizeof(SS_HdmiConv_MonitorCmd_e));
     ASSERT(sizeof(stMonitorDataPackage_t) == stBuf.u32TemBufferSize);
 
     pstPackage = (stMonitorDataPackage_t *)stBuf.pTemBuffer;
-    penCmd = (EN_TC_MonitorCmd_e *)stData.pUserData;
+    penCmd = (SS_HdmiConv_MonitorCmd_e*)stData.pUserData;
     switch (*penCmd)
     {
-        case E_START_MONITOR:
+        case EN_HDMICONV_START_MONITOR:
         {
             printf("Nothing to do !\n");
         }
         break;
-        case E_EXIT_MONITOR:
+        case EN_HDMICONV_EXIT_MONITOR:
         {
             if (pstPackage->enCurState == EN_SIGNAL_LOCK)
             {
@@ -488,15 +490,42 @@ void *Tc358743xbgDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
 
     return NULL;
 }
+static void SetVpeOut(MI_U16 u16W, MI_U16 u16H)
+{
+    Vpe *VpeObj = NULL;
+    std::string objName;
+    stVpeInfo_t stVpeInfo;
+    std::vector<stVpeOutInfo_t> vVpeOut;
 
-static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
+    objName = "VPE_CH0_DEV0";
+    VpeObj = dynamic_cast<Vpe *>(Sys::GetInstance(objName));
+    if (!VpeObj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        return;
+    }
+    VpeObj->GetInfo(stVpeInfo, vVpeOut);
+    for (unsigned int i = 0; i < vVpeOut.size(); i++)
+    {
+        if (vVpeOut[i].intPortId == 0)
+        {
+            vVpeOut[i].intVpeOutWidth = u16W;
+            vVpeOut[i].intVpeOutHeight = u16H;
+            break;
+        }
+    }
+    VpeObj->UpdateInfo(stVpeInfo, vVpeOut);
+}
+static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
 {
     SS_HdmiConv_SignalInfo_e enTcState;
     stMonitorDataPackage_t *pstPackage;
     SS_HdmiConv_AudInfo_t stAudioInfo;
+    MI_SNR_PlaneInfo_t stSnrPlane0Info;
     Sys *pSrcOb = NULL;
     Sys *pSrcObNew = NULL;
 
+    memset(&stSnrPlane0Info, 0x0, sizeof(MI_SNR_PlaneInfo_t));
     ASSERT(sizeof(stMonitorDataPackage_t) == stBuf.u32TemBufferSize);
     pstPackage = (stMonitorDataPackage_t *)stBuf.pTemBuffer;
     if ((*pstPackage->pVectVideoPipeLine).size() == 0 || (*pstPackage->pVectNoSignalVideoPipeLine).size() == 0)
@@ -505,51 +534,75 @@ static void * Tc358743xbgSensorMonitor(ST_TEM_BUFFER stBuf)
         return NULL;
     }
     MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_STATE, sizeof(SS_HdmiConv_UsrCmd_e), (void *)&enTcState, E_MI_SNR_CUSTDATA_TO_USER);
-    if (pstPackage->enCurState != EN_SIGNAL_LOCK && enTcState == EN_SIGNAL_LOCK)
+    if (enTcState == EN_SIGNAL_LOCK)
     {
-        MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
-        printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
-        ES8156_Init();
-        ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
+        MI_SNR_PlaneInfo_t stSnrPlane0Info;
+        MI_U16 u16SnrWidth;
+        MI_U16 u16SnrHeight;
 
-        pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
-        pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
-        Sys::Insert(*pstPackage->pVectVideoPipeLine);
-        printf("Insert video done !\n");
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
-        printf("Switch source done !\n");
-        Sys::Extract(*pstPackage->pVectNoSignalVideoPipeLine);
-        printf("Release file done !\n");
+        MI_SNR_GetPlaneInfo((MI_SNR_PAD_ID_e)0, 0, &stSnrPlane0Info);
+        u16SnrWidth = stSnrPlane0Info.stCapRect.u16Width;
+        u16SnrHeight = stSnrPlane0Info.stCapRect.u16Height;
+        if (pstPackage->enCurState != EN_SIGNAL_LOCK)
+        {
+            MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
+            printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
+            ES8156_Init();
+            ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
 
+            pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
+            pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
+            SetVpeOut(u16SnrWidth, u16SnrHeight);
+            Sys::Insert(*pstPackage->pVectVideoPipeLine);
+            printf("Insert video done !\n");
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
+            printf("Switch source done !\n");
+            Sys::Extract(*pstPackage->pVectNoSignalVideoPipeLine);
+            printf("Release file done !\n");
+        }
+        else
+        {
+            if (u16SnrWidth != pstPackage->u16SnrWidth || u16SnrHeight != pstPackage->u16SnrHeight)
+            {
+                Sys::Extract(*pstPackage->pVectVideoPipeLine);
+                SetVpeOut(u16SnrWidth, u16SnrHeight);
+                Sys::Insert(*pstPackage->pVectVideoPipeLine);
+            }
+        }
+        pstPackage->u16SnrWidth = u16SnrWidth;
+        pstPackage->u16SnrHeight = u16SnrHeight;
     }
-    else if (pstPackage->enCurState == EN_SIGNAL_LOCK && enTcState != EN_SIGNAL_LOCK)
+    else
     {
-        ES8156_Deinit();
-        printf("Signal unlock %d\n", enTcState);
-        pSrcOb = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
-        pSrcObNew = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
-        Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
-        printf("Insert source ok !\n");
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
-        Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
-        printf("Switch source done !\n");
-        Sys::Extract(*pstPackage->pVectVideoPipeLine);
-        printf("Release video done !\n");
+        if (pstPackage->enCurState == EN_SIGNAL_LOCK)
+        {
+            ES8156_Deinit();
+            printf("Signal unlock %d\n", enTcState);
+            pSrcOb = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
+            pSrcObNew = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
+            Sys::Insert(*pstPackage->pVectNoSignalVideoPipeLine);
+            printf("Insert source ok !\n");
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 2);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 4);
+            Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 6);
+            printf("Switch source done !\n");
+            Sys::Extract(*pstPackage->pVectVideoPipeLine);
+            printf("Release video done !\n");
+        }
     }
     pstPackage->enCurState = enTcState;
     return NULL;
 }
-static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys *> *pVectNoSignalVideoPipeLine, Sys *pDstObj)
+static void HdmiConvInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys *> *pVectNoSignalVideoPipeLine, Sys *pDstObj)
 {
     ST_TEM_ATTR stTemAttr;
     stMonitorDataPackage_t stTmpPackage;
     ST_TEM_USER_DATA stData;
-    EN_TC_MonitorCmd_e enCmd;
+    SS_HdmiConv_MonitorCmd_e enCmd;
 
     memset(&stTmpPackage, 0, sizeof(stMonitorDataPackage_t));
     stTmpPackage.enCurState = EN_SIGNAL_NO_CONNECTION;
@@ -561,34 +614,34 @@ static void tc358743xbgInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<
     MI_SNR_Enable((MI_SNR_PAD_ID_e)0);    
     PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
-    stTemAttr.fpThreadDoSignal = Tc358743xbgDoCmd;
-    stTemAttr.fpThreadWaitTimeOut = Tc358743xbgSensorMonitor;
+    stTemAttr.fpThreadDoSignal = HdmiConvDoCmd;
+    stTemAttr.fpThreadWaitTimeOut = HdmiConvSensorMonitor;
     stTemAttr.u32ThreadTimeoutMs = 500;
     stTemAttr.bSignalResetTimer = 0;
     stTemAttr.stTemBuf.pTemBuffer = &stTmpPackage;
     stTemAttr.stTemBuf.u32TemBufferSize = sizeof(stMonitorDataPackage_t);
     stTemAttr.maxEventCout = 30;
     stTemAttr.bDropEvent = FALSE;
-    TemOpen("tc358743xbg_monitor", stTemAttr);
-    enCmd = E_START_MONITOR;
+    TemOpen("hdmi_conv_monitor", stTemAttr);
+    enCmd = EN_HDMICONV_START_MONITOR;
     stData.pUserData = (void *)&enCmd;
-    stData.u32UserDataSize = sizeof(EN_TC_MonitorCmd_e);
+    stData.u32UserDataSize = sizeof(SS_HdmiConv_MonitorCmd_e);
     stData.u32BufferRealSize = 0;
-    TemSend("tc358743xbg_monitor", stData);
-    TemStartMonitor("tc358743xbg_monitor");
+    TemSend("hdmi_conv_monitor", stData);
+    TemStartMonitor("hdmi_conv_monitor");
 }
-static void tc358743xbgDeinit()
+static void HdmiConvDeinit()
 {
     ST_TEM_USER_DATA stData;
-    EN_TC_MonitorCmd_e enCmd;
+    SS_HdmiConv_MonitorCmd_e enCmd;
 
-    TemStop("tc358743xbg_monitor");
-    enCmd = E_EXIT_MONITOR;
+    TemStop("hdmi_conv_monitor");
+    enCmd = EN_HDMICONV_EXIT_MONITOR;
     stData.pUserData = (void *)&enCmd;
-    stData.u32UserDataSize = sizeof(EN_TC_MonitorCmd_e);
+    stData.u32UserDataSize = sizeof(SS_HdmiConv_MonitorCmd_e);
     stData.u32BufferRealSize = 0;
-    TemSend("tc358743xbg_monitor", stData);
-    TemClose("tc358743xbg_monitor");
+    TemSend("hdmi_conv_monitor", stData);
+    TemClose("hdmi_conv_monitor");
 }
 int main(int argc, char **argv)
 {
@@ -673,13 +726,13 @@ int main(int argc, char **argv)
         return -1;
     }
     Sys::Begin(maskMap);
-    tc358743xbgInit(&vectVideoPipeLine, &vectNoSignalVideoPipeLine, (Sys *)RtspObj);
+    HdmiConvInit(&vectVideoPipeLine, &vectNoSignalVideoPipeLine, (Sys *)RtspObj);
     do
     {
         printf("Press 'q' to exit!\n");
         getC = getchar();
     }while (getC != 'q');
-    tc358743xbgDeinit();
+    HdmiConvDeinit();
     Sys::End(maskMap);
     Sys::DestroyObj();
 
