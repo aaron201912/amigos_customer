@@ -192,10 +192,10 @@ void Venc::Init()
     memset(&stVenInSrc, 0, sizeof(MI_VENC_InputSourceConfig_t));
     for (itMapIn = mapModInputInfo.begin(); itMapIn != mapModInputInfo.end(); ++itMapIn)
     {
-        eBindType = (MI_SYS_BindType_e)GetIniInt(itMapIn->second.curIoKeyString, "BIND_TYPE");
+        eBindType = (MI_SYS_BindType_e)itMapIn->second.bindType;
         if (eBindType == E_MI_SYS_BIND_TYPE_HW_RING)
         {
-            u32BindParam = GetIniInt(itMapIn->second.curIoKeyString, "BIND_PARAM");
+            u32BindParam = itMapIn->second.bindPara;
             if (u32BindParam == (MI_U32)stVencInfo.intHeight)
             {
                 stVenInSrc.eInputSrcBufferMode = E_MI_VENC_INPUT_MODE_RING_ONE_FRM;

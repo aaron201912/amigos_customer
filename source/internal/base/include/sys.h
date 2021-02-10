@@ -340,6 +340,10 @@ class Sys
         static void SwtichSrc(Sys *srcObj, unsigned int srcOutPort, Sys *srcObjNew, unsigned int srcOutPortNew, Sys *dstObj, unsigned int dstInPort);
         static Sys* GetInstance(std::string &strKey){return (connectMap.find(strKey) != connectMap.end()) ? connectMap[strKey] : NULL;}
         void GetModDesc(stModDesc_t &stDesc){stDesc = stModDesc;}
+        void GetInputPortInfo(unsigned int inPortId, stModInputInfo_t & stIn);
+        void UpdateInputPortInfo(unsigned int inPortId, stModInputInfo_t & stIn);
+        void GetOutputPortInfo(unsigned int outPortId, stModOutputInfo_t & stOut);
+        void UpdateOutputPortInfo(unsigned int outPortId, stModOutputInfo_t & stOut);
 
         //Reset stream api
         int GetInputStreamInfo(unsigned int inPortId, stStreamInfo_t *pInfo);

@@ -469,6 +469,46 @@ void Sys::Insert(std::vector<Sys *> &objVect)
         Object->Start();
     }
 }
+void Sys::GetInputPortInfo(unsigned int inPortId, stModInputInfo_t & stIn)
+{
+    if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
+    {
+        AMIGOS_ERR("Not found input port %d\n", inPortId);
+        
+        return;
+    }
+    stIn = mapModInputInfo[inPortId];
+}
+void Sys::UpdateInputPortInfo(unsigned int inPortId, stModInputInfo_t & stIn)
+{
+    if (mapModInputInfo.find(inPortId) == mapModInputInfo.end())
+    {
+        AMIGOS_ERR("Not found input port %d\n", inPortId);
+        
+        return;
+    }
+    mapModInputInfo[inPortId] = stIn;
+}
+void Sys::GetOutputPortInfo(unsigned int outPortId, stModOutputInfo_t & stOut)
+{
+    if (mapModOutputInfo.find(outPortId) == mapModOutputInfo.end())
+    {
+        AMIGOS_ERR("Not found input port %d\n", outPortId);
+        
+        return;
+    }
+    stOut = mapModOutputInfo[outPortId];
+}
+void Sys::UpdateOutputPortInfo(unsigned int outPortId, stModOutputInfo_t & stOut)
+{
+    if (mapModOutputInfo.find(outPortId) == mapModOutputInfo.end())
+    {
+        AMIGOS_ERR("Not found input port %d\n", outPortId);
+        
+        return;
+    }
+    mapModOutputInfo[outPortId] = stOut;
+}
 void Sys::SetupModuleType()
 {
     mapSysModuleType[E_SYS_MOD_DISP] = E_STREAM_IN_DATA_IN_KERNEL_MODULE | E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_KERNEL_MODULE;
