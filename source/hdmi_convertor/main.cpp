@@ -13,6 +13,7 @@
 */
 
 #include <stdio.h>
+#include "snr.h"
 #include "vif.h"
 #include "vpe.h"
 #include "ai.h"
@@ -438,6 +439,13 @@ void Sys::Implement(std::string &strKey)
             }
             break;
 #endif
+#if INTERFACE_SENSOR
+            case E_SYS_MOD_SNR:
+            {
+                SysChild<Snr> Snr(strKey);
+            }
+            break;
+#endif
             case E_SYS_MOD_FILE:
             {
                 SysChild<File> File(strKey);
@@ -634,9 +642,6 @@ static void HdmiConvInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys
     stTmpPackage.pVectVideoPipeLine = pVectVideoPipeLine;
     stTmpPackage.pVectNoSignalVideoPipeLine = pVectNoSignalVideoPipeLine;
     stTmpPackage.pDstObject = pDstObj;
-    MI_SNR_SetPlaneMode((MI_SNR_PAD_ID_e)0, FALSE);
-    MI_SNR_SetRes((MI_SNR_PAD_ID_e)0, 0);
-    MI_SNR_Enable((MI_SNR_PAD_ID_e)0);    
     PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
     stTemAttr.fpThreadDoSignal = HdmiConvDoCmd;
@@ -690,6 +695,7 @@ int main(int argc, char **argv)
 
         return -1;
     }
+    mapModId["SNR"] = E_SYS_MOD_SNR;
     mapModId["RTSP"] = E_SYS_MOD_RTSP;
     mapModId["VENC"] = E_SYS_MOD_VENC;
     mapModId["VPE"] = E_SYS_MOD_VPE;
