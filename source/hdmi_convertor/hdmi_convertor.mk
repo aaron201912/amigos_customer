@@ -81,6 +81,7 @@ MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/dnsmasq.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/hostapd.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wlan.json
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/run.sh
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/run.eth0.dhcp.337.ip.sh
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/dnsmasq/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/dnsmasq
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/hostapd/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/hostapd
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/hostapd/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/hostapd_cli
