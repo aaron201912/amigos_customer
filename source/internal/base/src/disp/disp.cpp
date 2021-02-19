@@ -27,7 +27,7 @@
 #endif
 #include "mi_disp.h"
 
-#ifdef SSTAR_CHIP_I2M
+#if defined(SSTAR_CHIP_I2M) || defined(SSTAR_CHIP_I2)
 #ifdef INTERFACE_PANEL
 #include "SAT070CP50_1024x600.h"
 #endif
