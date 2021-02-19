@@ -49,6 +49,13 @@ typedef enum
 
 typedef enum
 {
+    EN_I2S_MODE_NORMAL,
+    EN_I2S_MODE_LEFT_JUSTIFIED,
+    EN_I2S_MODE_RIGHT_JUSTIFIED
+}SS_HdmiConv_I2SMode_e;
+
+typedef enum
+{
     EN_SIGNAL_NO_CONNECTION,
     EN_SIGNAL_CONNECTED,
     EN_SIGNAL_LOCK
@@ -322,6 +329,37 @@ static int ES8156_SelectWordLength(unsigned char ucharWordLength)
     return 0;
 
 }
+static int ES8156_ConfigI2s(SS_HdmiConv_I2SMode_e enI2sMode)
+{
+    unsigned char u8ReadVal = 0;
+
+    switch (enI2sMode)
+    {
+        case EN_I2S_MODE_NORMAL:
+        {
+            ES8156_ReadByte(0x11, &u8ReadVal);
+            u8ReadVal &= 0xFE; //bit 0 = 0
+            ES8156_WriteByte(0x11, u8ReadVal);
+        }
+        break;
+        case EN_I2S_MODE_LEFT_JUSTIFIED:
+        {
+            ES8156_ReadByte(0x11, &u8ReadVal);
+            u8ReadVal = (u8ReadVal & 0xFE) | 0x1; //bit 0 = 1
+            ES8156_WriteByte(0x11, u8ReadVal);
+        }
+        break;
+        case EN_I2S_MODE_RIGHT_JUSTIFIED:
+        {
+            // I don't know.
+        }
+        break;
+        default:
+            break;
+    }
+
+    return 0;
+}
 
 static int ES8156_Init(void)
 {
@@ -569,6 +607,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         MI_SNR_PlaneInfo_t stSnrPlane0Info;
         MI_U16 u16SnrWidth;
         MI_U16 u16SnrHeight;
+        SS_HdmiConv_I2SMode_e enI2sMode = EN_I2S_MODE_NORMAL;
 
         MI_SNR_GetPlaneInfo((MI_SNR_PAD_ID_e)0, 0, &stSnrPlane0Info);
         u16SnrWidth = stSnrPlane0Info.stCapRect.u16Width;
@@ -577,9 +616,11 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         {
 
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
+            MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_CONFIG_I2S, sizeof(SS_HdmiConv_I2SMode_e), (void *)&enI2sMode, E_MI_SNR_CUSTDATA_TO_DRIVER);
             printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
             ES8156_Init();
             ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
+            ES8156_ConfigI2s(enI2sMode);
 
             pSrcOb = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
             pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
