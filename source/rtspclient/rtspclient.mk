@@ -62,6 +62,7 @@ MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_DIVP_HDMI.ini
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/RTSP_CLIENT_SLOT.ini
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wpa_supplicant.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/run.sh
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/run.eth0.dhcp.203.ip.sh
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/wireless_tools/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/iwlist $(DB_3PARTY_PATH)/wireless_tools/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/iwpriv
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/wpa_supplicant/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/wpa_supplicant
 MODULE_REL_BIN += $(DB_3PARTY_PATH)/wpa_supplicant/bin/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/wpa_cli
