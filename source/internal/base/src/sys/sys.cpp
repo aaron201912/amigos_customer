@@ -399,6 +399,7 @@ void Sys::Extract(std::vector<Sys *> &objVect)
     for (i = objVect.size(); i != 0; i--)
     {
         Object = objVect[i - 1];
+        Object->bExtract = true;
         Object->Stop();
     }
     for (i = objVect.size(); i != 0; i--)
@@ -467,6 +468,7 @@ void Sys::Insert(std::vector<Sys *> &objVect)
     {
         Object = *itObjVect;
         Object->Start();
+        Object->bExtract = false;
     }
 }
 void Sys::GetInputPortInfo(unsigned int inPortId, stModInputInfo_t & stIn)
@@ -1140,6 +1142,12 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
     stStreamData_t stStreamData;
 
     ASSERT(pClass);
+    if (pClass->bExtract)
+    {
+        usleep(10 * 1000);
+
+        return NULL;
+    }
     memset(&stStreamData, 0, sizeof(stStreamData_t));
     stChnOutputPort.eModId = (MI_ModuleId_e)pClass->stModDesc.modId;
     stChnOutputPort.u32DevId = (MI_U32)pClass->stModDesc.devId;
@@ -1340,6 +1348,12 @@ void Sys::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsig
 
     pInstance = (Sys *)pUsrData;
     ASSERT(pInstance);
+    if (pInstance->bExtract)
+    {
+        usleep(10 * 1000);
+
+        return;
+    }
     if (sizeof(stStreamData_t) == dataSize)
     {
         pStreamData = (stStreamData_t *)pData;

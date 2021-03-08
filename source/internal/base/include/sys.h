@@ -323,6 +323,7 @@ class Sys
             gstSwitchSrcMutex = PTHREAD_MUTEX_INITIALIZER;
             pRecvEsBuffer = NULL;
             uintRecvEsBufferSize = 0;
+            bExtract = false;
         }
         virtual ~Sys()
         {
@@ -435,6 +436,7 @@ class Sys
         static std::map<std::string, unsigned int> connectIdMap;
         static dictionary *m_pstDict;
         static pthread_mutex_t gstUsrMutex;
+        bool bExtract;
         char *pRecvEsBuffer;
         unsigned int uintRecvEsBufferSize;
 };
