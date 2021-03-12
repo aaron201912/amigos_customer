@@ -112,12 +112,13 @@ void * Inject::SenderMonitor(ST_TEM_BUFFER stBuf)
 {
     std::map<unsigned int, void *>::iterator itMapUserIdToBufHandle;
 #ifndef SSTAR_CHIP_I2
+#ifndef SSTAR_CHIP_I2M
     MI_SYS_BUF_HANDLE sysDupBufHandle;
+#endif
 #endif
     stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
     Inject *pThisClass = (Inject *)pReceiver->pSysClass;
     stInjectBufHandler_t *pInjectBufHandler = NULL;
-    int intOsdFd = 0;
     unsigned char bShowOsd = FALSE;
     unsigned uintOsdHandleId = 0;
 
@@ -138,6 +139,7 @@ void * Inject::SenderMonitor(ST_TEM_BUFFER stBuf)
             MI_U32 u32CopyWidthBytes = 0;
             MI_U8 u8BitCount = 0;
             MI_RGN_CanvasInfo_t stCanvasInfo;
+            int intOsdFd = 0;
 
             MI_RGN_GetCanvasInfo((MI_RGN_HANDLE)uintOsdHandleId, &stCanvasInfo);
             intOsdFd = open(pThisClass->mapInjectOutInfo[pReceiver->uintPort].strInjectOsdSrcFile.c_str(), O_RDONLY);
@@ -160,8 +162,10 @@ void * Inject::SenderMonitor(ST_TEM_BUFFER stBuf)
 #endif
         }
 #ifndef SSTAR_CHIP_I2
+#ifndef SSTAR_CHIP_I2M
         MI_SYS_DupBuf(pInjectBufHandler->sysBufHandle, &sysDupBufHandle);
         MI_SYS_ChnInputPortPutBuf(sysDupBufHandle, &pInjectBufHandler->stBufInfo, FALSE);
+#endif
 #endif
         uintOsdHandleId++;
     }
