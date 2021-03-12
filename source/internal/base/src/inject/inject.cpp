@@ -111,7 +111,9 @@ void Inject::UnBindBlock(stModInputInfo_t & stIn)
 void * Inject::SenderMonitor(ST_TEM_BUFFER stBuf)
 {
     std::map<unsigned int, void *>::iterator itMapUserIdToBufHandle;
+#ifndef SSTAR_CHIP_I2
     MI_SYS_BUF_HANDLE sysDupBufHandle;
+#endif
     stReceiverDesc_t *pReceiver = (stReceiverDesc_t *)stBuf.pTemBuffer;
     Inject *pThisClass = (Inject *)pReceiver->pSysClass;
     stInjectBufHandler_t *pInjectBufHandler = NULL;
@@ -157,8 +159,10 @@ void * Inject::SenderMonitor(ST_TEM_BUFFER stBuf)
             pInjectBufHandler->bUpdateRgn = FALSE;
 #endif
         }
+#ifndef SSTAR_CHIP_I2
         MI_SYS_DupBuf(pInjectBufHandler->sysBufHandle, &sysDupBufHandle);
         MI_SYS_ChnInputPortPutBuf(sysDupBufHandle, &pInjectBufHandler->stBufInfo, FALSE);
+#endif
         uintOsdHandleId++;
     }
 
@@ -343,6 +347,7 @@ void Inject::Start()
                         }
                     }
                 }
+#ifndef SSTAR_CHIP_I2
                 else if (E_MI_SYS_PIXEL_FRAME_YUV422_UYVY == stBufConf.stFrameCfg.eFormat)
                 {
                     pDataTo[0] = (MI_U8 *)stBufInfo.stFrameData.pVirAddr[0];
@@ -388,6 +393,7 @@ void Inject::Start()
                         }
                     }
                 }
+#endif
                 pInjectBufInfo = (stInjectBufHandler_t *)malloc(sizeof(stInjectBufHandler_t));
                 ASSERT(pInjectBufInfo);
                 memset(pInjectBufInfo, 0, sizeof(stInjectBufHandler_t));
@@ -421,7 +427,7 @@ void Inject::Start()
                     stRegion.stOsdInitParam.stSize.u32Height = (MI_U32)itMapInjectOutInfo->second.uintOsdHeight;
                     MI_RGN_Create((MI_RGN_HANDLE)uintInjectId, &stRegion);
                     memset(&stChnAttr, 0, sizeof(MI_RGN_ChnPortParam_t));
-                    stChnPort.eModId = (stDesc.modId == E_MI_MODULE_ID_DIVP) ? E_MI_RGN_MODID_DIVP : ((stDesc.modId == E_MI_MODULE_ID_VPE) ? E_MI_RGN_MODID_VPE : E_MI_RGN_MODID_LDC );
+                    stChnPort.eModId = (stDesc.modId == E_MI_MODULE_ID_DIVP) ? E_MI_RGN_MODID_DIVP : E_MI_RGN_MODID_VPE;
                     stChnPort.s32DevId = (MI_S32)stDesc.devId;
                     stChnPort.s32ChnId = (MI_S32)stDesc.chnId;
                     stChnPort.s32OutputPortId = itMapInjectOutInfo->second.uintOsdTargetPordId;
@@ -430,6 +436,7 @@ void Inject::Start()
                                              (itMapInjectOutInfo->second.uintVideoWidth - itMapInjectOutInfo->second.uintOsdWidth): itMapInjectOutInfo->second.uintVideoWidth) / 2;
                     stChnAttr.stPoint.u32Y = ((itMapInjectOutInfo->second.uintVideoHeight > itMapInjectOutInfo->second.uintOsdHeight)?
                                              (itMapInjectOutInfo->second.uintVideoHeight - itMapInjectOutInfo->second.uintOsdHeight): itMapInjectOutInfo->second.uintVideoHeight) / 2;
+#ifndef SSTAR_CHIP_I2
                     stChnAttr.unPara.stOsdChnPort.u32Layer = 0;
                     stChnAttr.unPara.stOsdChnPort.stColorInvertAttr.bEnableColorInv = 0;
                     stChnAttr.unPara.stOsdChnPort.stColorInvertAttr.eInvertColorMode = (MI_RGN_InvertColorMode_e)0;
@@ -439,6 +446,7 @@ void Inject::Start()
                     stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.eAlphaMode = E_MI_RGN_PIXEL_ALPHA;
                     stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.stAlphaPara.stArgb1555Alpha.u8BgAlpha = 0;
                     stChnAttr.unPara.stOsdChnPort.stOsdAlphaAttr.stAlphaPara.stArgb1555Alpha.u8FgAlpha = 0xFF;
+#endif
                     MI_RGN_AttachToChn((MI_RGN_HANDLE)uintInjectId, &stChnPort, &stChnAttr);
                 }
 #endif
