@@ -538,6 +538,7 @@ void Sys::SetupModuleType()
     mapSysModuleType[E_SYS_MOD_SLOT] = 0;
     mapSysModuleType[E_SYS_MOD_UAC] = E_STREAM_IN_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_UVC] = E_STREAM_IN_DATA_IN_USER_MODULE;
+    mapSysModuleType[E_SYS_MOD_EMPTY] = E_STREAM_IN_DATA_IN_USER_MODULE | E_STREAM_OUT_DATA_IN_USER_MODULE;
     mapSysModuleType[E_SYS_MOD_INJECT] = E_STREAM_OUT_DATA_IN_USER_MODULE;
 }
 void Sys::CreateConnection()
