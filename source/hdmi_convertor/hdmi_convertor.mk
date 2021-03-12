@@ -75,8 +75,7 @@ LIBS += -lmi_sys -lcam_fs_wrapper -lcam_os_wrapper
 
 APP_PREFIX := $(DB_IMAGE_PATH)/hdmiap
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/$(CHIP_ALIAS)/2M_AUDIO.ini
-MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/nosignal.h264
-MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/nosignal.h265
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/80X80.i2
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/dnsmasq.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/hostapd.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wlan.json

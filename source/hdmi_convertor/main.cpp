@@ -18,9 +18,12 @@
 #include "vpe.h"
 #include "ai.h"
 #include "sys.h"
+#include "divp.h"
 #include "rtsp.h"
 #include "venc.h"
 #include "file.h"
+#include "inject.h"
+#include "empty.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -477,6 +480,18 @@ void Sys::Implement(std::string &strKey)
             }
             break;
 #endif
+#if INTERFACE_DIVP
+            case E_SYS_MOD_DIVP:
+            {
+                SysChild<Divp> Divp(strKey);
+            }
+            break;
+#endif
+            case E_SYS_MOD_INJECT:
+            {
+                SysChild<Inject> Inject(strKey);
+            }
+            break;
 #if INTERFACE_SENSOR
             case E_SYS_MOD_SNR:
             {
@@ -487,6 +502,11 @@ void Sys::Implement(std::string &strKey)
             case E_SYS_MOD_FILE:
             {
                 SysChild<File> File(strKey);
+            }
+            break;
+            case E_SYS_MOD_EMPTY:
+            {
+                SysChild<Empty> Inject(strKey);
             }
             break;
             default:
@@ -614,11 +634,9 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         u16SnrHeight = stSnrPlane0Info.stCapRect.u16Height;
         if (pstPackage->enCurState != EN_SIGNAL_LOCK)
         {
-
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_CONFIG_I2S, sizeof(SS_HdmiConv_I2SMode_e), (void *)&enI2sMode, E_MI_SNR_CUSTDATA_TO_DRIVER);
             printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
-            ES8156_Init();
             ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
             ES8156_ConfigI2s(enI2sMode);
 
@@ -653,7 +671,6 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
     {
         if (pstPackage->enCurState == EN_SIGNAL_LOCK)
         {
-            ES8156_Deinit();
             printf("Signal unlock %d\n", enTcState);
             pSrcOb = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
             pSrcObNew = (*pstPackage->pVectNoSignalVideoPipeLine)[(*pstPackage->pVectNoSignalVideoPipeLine).size() - 1];
@@ -677,6 +694,8 @@ static void HdmiConvInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys
     stMonitorDataPackage_t stTmpPackage;
     ST_TEM_USER_DATA stData;
     SS_HdmiConv_MonitorCmd_e enCmd;
+
+    ES8156_Init(); //Audio dac init
 
     memset(&stTmpPackage, 0, sizeof(stMonitorDataPackage_t));
     stTmpPackage.enCurState = EN_SIGNAL_NO_CONNECTION;
@@ -713,6 +732,8 @@ static void HdmiConvDeinit()
     stData.u32BufferRealSize = 0;
     TemSend("hdmi_conv_monitor", stData);
     TemClose("hdmi_conv_monitor");
+
+    ES8156_Deinit();
 }
 int main(int argc, char **argv)
 {
@@ -725,7 +746,9 @@ int main(int argc, char **argv)
     Vif *VifObj = NULL;
     Vpe *VpeObj = NULL;
     Venc *VencObj = NULL;
-    File *FileObj = NULL;
+    Inject *InjectObj = NULL;
+    Divp *DivpObj = NULL;
+    Venc *Venc1Obj = NULL;
     Rtsp *RtspObj = NULL;
 
     char getC = 0;
@@ -743,8 +766,11 @@ int main(int argc, char **argv)
     mapModId["VIF"] = E_SYS_MOD_VIF;
     mapModId["AI"] = E_SYS_MOD_AI;
     mapModId["FILE"] = E_SYS_MOD_FILE;
+    mapModId["EMPTY"] = E_SYS_MOD_EMPTY;
+    mapModId["INJECT"] = E_SYS_MOD_INJECT;
     Sys::CreateObj(argv[1], mapModId);
 
+    //Start to set signal object
     objName = "VIF_CH0_DEV0";
     VifObj = dynamic_cast<Vif *>(Sys::GetInstance(objName));
     if (!VifObj)
@@ -778,16 +804,38 @@ int main(int argc, char **argv)
     vectVideoPipeLine.push_back(VencObj);
     maskMap[objName] = VencObj;
 
-    objName = "FILE";
-    FileObj = dynamic_cast<File *>(Sys::GetInstance(objName));
-    if (!FileObj)
+    //Start to set No signal object
+    objName = "INJECT_CH0_DEV0";
+    InjectObj = dynamic_cast<Inject *>(Sys::GetInstance(objName));
+    if (!InjectObj)
     {
         printf("%s: Obj error!\n", objName.c_str());
         Sys::DestroyObj();
         return -1;
     }
-    vectNoSignalVideoPipeLine.push_back(FileObj);
-    // default show no signal video, so no need to mask file.
+    vectNoSignalVideoPipeLine.push_back(InjectObj);
+
+    objName = "DIVP_CH0_DEV0";
+    DivpObj = dynamic_cast<Divp *>(Sys::GetInstance(objName));
+    if (!DivpObj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        Sys::DestroyObj();
+        return -1;
+    }
+    vectNoSignalVideoPipeLine.push_back(DivpObj);
+
+    objName = "VENC_CH1_DEV0";
+    Venc1Obj = dynamic_cast<Venc *>(Sys::GetInstance(objName));
+    if (!Venc1Obj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        Sys::DestroyObj();
+        return -1;
+    }
+    vectNoSignalVideoPipeLine.push_back(Venc1Obj);
+
+    // default show no signal video, so no need to mask inject/divp/venc1.
 
     objName = "RTSP";
     RtspObj = dynamic_cast<Rtsp *>(Sys::GetInstance(objName));

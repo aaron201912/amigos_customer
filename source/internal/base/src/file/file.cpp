@@ -393,7 +393,9 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                     y_size  = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight;
                     uv_size  = y_size/2;
                     pYdata = (char*)malloc(y_size);
+                    ASSERT(pYdata);
                     pUvdata = (char*)malloc(uv_size);
+                    ASSERT(pUvdata);
                     if(pYdata == NULL || pUvdata == NULL)
                     {
                         goto free_buf;
@@ -423,6 +425,7 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                     stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
                     dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight * 2;
                     pData = (char*)malloc(dataSize);
+                    ASSERT(pData);
                     ret =  GetOneFrame(readfp, pData, dataSize);
                     if(ret == 1)
                     {
@@ -445,6 +448,7 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                     stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
                     dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight * 4;
                     pData = (char*)malloc(dataSize);
+                    ASSERT(pData);
                     ret =  GetOneFrame(readfp, pData, dataSize);
                     if(ret == 1)
                     {
@@ -464,6 +468,7 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                     stFileStreamData.stInfo.stFrameInfo.streamHeight = ((File*)pSendClass)->mapOutputRdFile[pReceiver->uintPort].intFileOutHeight;
                     dataSize = stFileStreamData.stInfo.stFrameInfo.streamWidth * stFileStreamData.stInfo.stFrameInfo.streamHeight;
                     pData = (char*)malloc(dataSize);
+                    ASSERT(pData);
                     ret =  GetOneFrame(readfp, pData, dataSize);
                     if(ret == 1)
                     {
@@ -505,10 +510,7 @@ void * File::SenderMonitor(ST_TEM_BUFFER stBuf)
                     }
                     u32FrameLen = MI_U32VALUE(au8Header, 4);
                     pu8Buf = (MI_U8 *)malloc(u32FrameLen);
-                    if (pu8Buf == NULL)
-                    {
-                        return NULL;
-                    }
+                    ASSERT(pu8Buf);
                     s32Len = read(readfp, pu8Buf, u32FrameLen);
                     if (s32Len <= 0)
                     {

@@ -33,6 +33,7 @@
 #include "snr.h"
 #include "uac.h"
 #include "uvc.h"
+#include "inject.h"
 
 void Sys::Implement(std::string &strKey)
 {
@@ -163,6 +164,11 @@ void Sys::Implement(std::string &strKey)
                 SysChild<Uvc> Uvc(strKey);
             }
             break;
+            case E_SYS_MOD_INJECT:
+            {
+                SysChild<Inject> Inject(strKey);
+            }
+            break;
             default:
                 return;
         }
@@ -288,6 +294,8 @@ int main(int argc, char **argv)
 #ifndef SSTAR_CHIP_I2
     mapModId["SNR"] = E_SYS_MOD_SNR;
 #endif
+    mapModId["INJECT"] = E_SYS_MOD_INJECT;
+
     for (i = 1; i < (unsigned int)argc; i++)
     {
         vectIniFiles.push_back(argv[i]);
