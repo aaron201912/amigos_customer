@@ -183,7 +183,7 @@ int Inject::CreateSender(unsigned int outPortId)
     memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
     stTemAttr.fpThreadDoSignal = NULL;
     stTemAttr.fpThreadWaitTimeOut = SenderMonitor;
-    stTemAttr.u32ThreadTimeoutMs = 1000 / mapModOutputInfo[outPortId].curFrmRate;
+    stTemAttr.u32ThreadTimeoutMs = (2000 + mapModOutputInfo[outPortId].curFrmRate ) / (2 * mapModOutputInfo[outPortId].curFrmRate);
     stTemAttr.bSignalResetTimer = 0;
     stTemAttr.stTemBuf.pTemBuffer = (void *)&(mapRecevier[outPortId]);
     stTemAttr.stTemBuf.u32TemBufferSize = 0;

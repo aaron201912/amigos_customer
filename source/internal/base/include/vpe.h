@@ -68,6 +68,7 @@ class Vpe: public Sys
         virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
+        virtual void Stop();
         virtual void ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo);
 
         stVpeInfo_t stVpeInfo;

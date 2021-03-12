@@ -427,7 +427,6 @@ void Sys::Extract(std::vector<Sys *> &objVect)
         Object = objVect[i - 1];
         Object->Deinit();
     }
-
 }
 void Sys::Insert(std::vector<Sys *> &objVect)
 {

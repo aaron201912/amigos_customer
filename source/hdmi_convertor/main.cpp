@@ -13,6 +13,17 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <errno.h>
+#include <string.h>
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
+#include "mi_sensor.h"
+#include "tem.h"
 #include "snr.h"
 #include "vif.h"
 #include "vpe.h"
@@ -24,19 +35,7 @@
 #include "file.h"
 #include "inject.h"
 #include "empty.h"
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <errno.h>
-#include <string.h>
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
-
 //#include "es8156.h"
-#include "mi_sensor.h"
-#include "tem.h"
 
 
 #define I2C_ADAPTER_STR     ("/dev/i2c-1")
@@ -538,7 +537,6 @@ void *HdmiConvDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
         {
             if (pstPackage->enCurState == EN_SIGNAL_LOCK)
             {
-                ES8156_Deinit();
                 printf("Signal lock need release!\n");
                 Sys::Extract(*pstPackage->pVectVideoPipeLine);
                 printf("Release video done !\n");
@@ -768,6 +766,7 @@ int main(int argc, char **argv)
     mapModId["FILE"] = E_SYS_MOD_FILE;
     mapModId["EMPTY"] = E_SYS_MOD_EMPTY;
     mapModId["INJECT"] = E_SYS_MOD_INJECT;
+    mapModId["DIVP"] = E_SYS_MOD_DIVP;
     Sys::CreateObj(argv[1], mapModId);
 
     //Start to set signal object
@@ -853,6 +852,13 @@ int main(int argc, char **argv)
         getC = getchar();
     }while (getC != 'q');
     HdmiConvDeinit();
+    //Exit flow had already extract all changed module.
+    objName = "INJECT_CH0_DEV0";
+    maskMap[objName] = InjectObj;
+    objName = "DIVP_CH0_DEV0";
+    maskMap[objName] = DivpObj;
+    objName = "VENC_CH1_DEV0";
+    maskMap[objName] = Venc1Obj;
     Sys::End(maskMap);
     Sys::DestroyObj();
 

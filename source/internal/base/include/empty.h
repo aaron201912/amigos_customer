@@ -23,6 +23,7 @@ class Empty: public Sys
         Empty();
         virtual ~Empty();
     private:
+        virtual void LoadDb();
         virtual void Init();
         virtual void Deinit();
         virtual void BindBlock(stModInputInfo_t & stIn);
@@ -32,6 +33,7 @@ class Empty: public Sys
         virtual int StartSender(unsigned int outPortId);
         virtual int StopSender(unsigned int outPortId);
         static void DataReceiver(void *pData, unsigned int dataSize, void *pUsrData,  unsigned char portId);
+        std::map<unsigned int, unsigned int> mapEmptyInInfo;
 };
 #endif
 

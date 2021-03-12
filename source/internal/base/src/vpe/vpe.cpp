@@ -301,6 +301,10 @@ void Vpe::ResetOut(unsigned int outPortId, stStreamInfo_t *pInfo)
 }
 void Vpe::Deinit()
 {
+
+}
+void Vpe::Stop()
+{
     std::vector<stVpeOutInfo_t>::iterator itVpeOutInfo;
     for(itVpeOutInfo = vVpeOutInfo.begin(); itVpeOutInfo != vVpeOutInfo.end(); itVpeOutInfo++)
     {
