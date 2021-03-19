@@ -46,8 +46,16 @@ typedef enum
     EN_CUST_CMD_GET_STATE,
     EN_CUST_CMD_GET_AUDIO_INFO,
     EN_CUST_CMD_CONFIG_I2S,
+    EN_CUST_CMD_GET_SCAN_MODE,
     EN_CUST_CMD_MAX
 }SS_HdmiConv_UsrCmd_e;
+
+typedef enum
+{
+    EN_SCAN_MODE_PROGRESSIVE,
+    EN_SCAN_MODE_INTERLACED,
+    EN_SCAN_MODE_AUTO
+}SS_HdmiConv_ScanMode_e;
 
 typedef enum
 {
@@ -83,6 +91,7 @@ typedef struct
     std::vector<Sys *> * pVectNoSignalVideoPipeLine;
     Sys * pDstObject;
     SS_HdmiConv_SignalInfo_e enCurState;
+    SS_HdmiConv_ScanMode_e enScanMode;
     MI_U16 u16SnrWidth;
     MI_U16 u16SnrHeight;
 }stMonitorDataPackage_t;
@@ -626,15 +635,17 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         MI_U16 u16SnrWidth;
         MI_U16 u16SnrHeight;
         SS_HdmiConv_I2SMode_e enI2sMode = EN_I2S_MODE_NORMAL;
+        SS_HdmiConv_ScanMode_e enScanMode = EN_SCAN_MODE_PROGRESSIVE;
 
         MI_SNR_GetPlaneInfo((MI_SNR_PAD_ID_e)0, 0, &stSnrPlane0Info);
+        MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_SCAN_MODE, sizeof(SS_HdmiConv_ScanMode_e), (void *)&enScanMode, E_MI_SNR_CUSTDATA_TO_USER);
         u16SnrWidth = stSnrPlane0Info.stCapRect.u16Width;
-        u16SnrHeight = stSnrPlane0Info.stCapRect.u16Height;
+        u16SnrHeight = (enScanMode == EN_SCAN_MODE_INTERLACED) ? stSnrPlane0Info.stCapRect.u16Height * 2 : stSnrPlane0Info.stCapRect.u16Height;
         if (pstPackage->enCurState != EN_SIGNAL_LOCK)
         {
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_CONFIG_I2S, sizeof(SS_HdmiConv_I2SMode_e), (void *)&enI2sMode, E_MI_SNR_CUSTDATA_TO_DRIVER);
-            printf("Signal lock %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
+            printf("Signal lock %d scan_mode %d fmt %d audio sample rate %d audio bit width %d channels %d\n", enTcState, enScanMode, stAudioInfo.enAudioFormat, stAudioInfo.u32SampleRate, stAudioInfo.u8BitWidth, stAudioInfo.u8ChannelCount);
             ES8156_SelectWordLength(stAudioInfo.u8BitWidth);
             ES8156_ConfigI2s(enI2sMode);
 
@@ -654,7 +665,9 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         }
         else
         {
-            if (u16SnrWidth != pstPackage->u16SnrWidth || u16SnrHeight != pstPackage->u16SnrHeight)
+            if (u16SnrWidth != pstPackage->u16SnrWidth
+                || u16SnrHeight != pstPackage->u16SnrHeight
+                || pstPackage->enScanMode != enScanMode)
             {
                 Sys::Extract(*pstPackage->pVectVideoPipeLine);
                 SetVpeOut(u16SnrWidth, u16SnrHeight);
@@ -664,6 +677,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         }
         pstPackage->u16SnrWidth = u16SnrWidth;
         pstPackage->u16SnrHeight = u16SnrHeight;
+        pstPackage->enScanMode = enScanMode;
     }
     else
     {
