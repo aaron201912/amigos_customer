@@ -611,6 +611,67 @@ static void SetVenc(MI_U16 u16W, MI_U16 u16H)
     stInputPortInfo.bindPara = u16H;
     VencObj->UpdateInputPortInfo(0, stInputPortInfo);
 }
+static void SetScanMode(SS_HdmiConv_ScanMode_e enScanMode)
+{
+    Vpe *VpeObj = NULL;
+    Venc *VencObj = NULL;
+    std::string objName;
+    std::vector<stVpeOutInfo_t> vVpeOut;
+    stVpeInfo_t stVpeInfo;
+    stVencInfo_t stVencInfo;
+    stModInputInfo_t stInputPortInfo;
+    static stModInputInfo_t stDefInputPortInfo;
+    static bool bFirstGet = false;
+
+    objName = "VPE_CH0_DEV0";
+    VpeObj = dynamic_cast<Vpe *>(Sys::GetInstance(objName));
+    if (!VpeObj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        return;
+    }
+    objName = "VENC_CH0_DEV0";
+    VencObj = dynamic_cast<Venc *>(Sys::GetInstance(objName));
+    if (!VencObj)
+    {
+        printf("%s: Obj error!\n", objName.c_str());
+        return;
+    }
+    if (!bFirstGet)
+    {
+        VencObj->GetInputPortInfo(0, stDefInputPortInfo);
+    }
+    switch (enScanMode)
+    {
+        case EN_SCAN_MODE_INTERLACED:
+        {
+            VpeObj->GetInfo(stVpeInfo, vVpeOut);
+            for (unsigned int i = 0; i < vVpeOut.size(); i++)
+            {
+                if (vVpeOut[i].intPortId == 0)
+                {
+                    vVpeOut[i].intVpeOutHeight *= 2;
+                    break;
+                }
+            }
+            VpeObj->UpdateInfo(stVpeInfo, vVpeOut);
+            VencObj->GetInfo(stVencInfo);
+            stVencInfo.intHeight *= 2;
+            VencObj->UpdateInfo(stVencInfo);
+            VencObj->GetInputPortInfo(0, stInputPortInfo);
+            stInputPortInfo.curFrmRate /= 2;
+            stInputPortInfo.bindType = 1;
+            stInputPortInfo.bindPara = 0;
+            VencObj->UpdateInputPortInfo(0, stInputPortInfo);
+        }
+        break;
+        default:
+        {
+            VencObj->UpdateInputPortInfo(0, stDefInputPortInfo);
+        }
+        break;
+    }
+}
 static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
 {
     SS_HdmiConv_SignalInfo_e enTcState;
@@ -640,7 +701,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
         MI_SNR_GetPlaneInfo((MI_SNR_PAD_ID_e)0, 0, &stSnrPlane0Info);
         MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_SCAN_MODE, sizeof(SS_HdmiConv_ScanMode_e), (void *)&enScanMode, E_MI_SNR_CUSTDATA_TO_USER);
         u16SnrWidth = stSnrPlane0Info.stCapRect.u16Width;
-        u16SnrHeight = (enScanMode == EN_SCAN_MODE_INTERLACED) ? stSnrPlane0Info.stCapRect.u16Height * 2 : stSnrPlane0Info.stCapRect.u16Height;
+        u16SnrHeight = stSnrPlane0Info.stCapRect.u16Height;
         if (pstPackage->enCurState != EN_SIGNAL_LOCK)
         {
             MI_SNR_CustFunction((MI_SNR_PAD_ID_e)0, EN_CUST_CMD_GET_AUDIO_INFO, sizeof(SS_HdmiConv_AudInfo_t), (void *)&stAudioInfo, E_MI_SNR_CUSTDATA_TO_USER);
@@ -653,6 +714,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
             pSrcObNew = (*pstPackage->pVectVideoPipeLine)[(*pstPackage->pVectVideoPipeLine).size() - 1];
             SetVpeOut(u16SnrWidth, u16SnrHeight);
             SetVenc(u16SnrWidth, u16SnrHeight);
+            SetScanMode(enScanMode);
             Sys::Insert(*pstPackage->pVectVideoPipeLine);
             printf("Insert video done !\n");
             Sys::SwtichSrc(pSrcOb, 0, pSrcObNew, 0, pstPackage->pDstObject, 0);
@@ -672,6 +734,7 @@ static void * HdmiConvSensorMonitor(ST_TEM_BUFFER stBuf)
                 Sys::Extract(*pstPackage->pVectVideoPipeLine);
                 SetVpeOut(u16SnrWidth, u16SnrHeight);
                 SetVenc(u16SnrWidth, u16SnrHeight);
+                SetScanMode(enScanMode);
                 Sys::Insert(*pstPackage->pVectVideoPipeLine);
             }
         }
