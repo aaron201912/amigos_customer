@@ -75,7 +75,8 @@ LIBS += -lmi_sys -lcam_fs_wrapper -lcam_os_wrapper
 
 APP_PREFIX := $(DB_IMAGE_PATH)/hdmiap
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/$(CHIP_ALIAS)/2M_AUDIO.ini
-MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/80X80.i2
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wuxinhao.index2
+MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/nosignal.index2
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/dnsmasq.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/hostapd.conf
 MODULE_REL_FILES += $(DB_BUILD_TOP)/$(MODULE)/configs/wlan.json
