@@ -346,42 +346,33 @@ static void *_TemThreadMain(void * pArg)
                 break;
             if (pTempNode->pTemAttr->fpThreadWaitTimeOut)
             {
+                pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
                 if (bRunOneShot)
                 {
-                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
                     u32TimeOut = 0xFFFFFFFF;
                     bRunOneShot = 0;
                     break;
-                }
-                else
-                {
-                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
                 }
             }
         }
         PTH_RET_CHK(pthread_mutex_lock(&pTempNode->pTemInfo->mutex));
         while (1)
         {
-            u32FuncRunTime = _GetTime0();
-            if (pTempNode->pTemAttr->fpThreadWaitTimeOut && intCondWaitRev == ETIMEDOUT)
-            {
-                if (bRunOneShot)
-                {
-                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
-                    u32TimeOut = 0xFFFFFFFF;
-                    bRunOneShot = 0;
-                    break;
-                }
-                else
-                {
-                    pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
-                }
-            }
             _TemEventMonitor(pTempNode, &u32TimeOut, &bRunOneShot, &bRun);
             if (!bRun)
                 break;
             if (!u32TimeOut)
                 break;
+            u32FuncRunTime = _GetTime0();
+            if (pTempNode->pTemAttr->fpThreadWaitTimeOut && intCondWaitRev == ETIMEDOUT)
+            {
+                pTempNode->pTemAttr->fpThreadWaitTimeOut(pTempNode->pTemAttr->stTemBuf);
+                if (bRunOneShot)
+                {
+                    u32TimeOut = 0xFFFFFFFF;
+                    bRunOneShot = 0;
+                }
+            }
             u32FuncRunTime = _GetTime0() - u32FuncRunTime;
             switch (u32TimeOut)
             {
@@ -572,7 +563,6 @@ int TemClose(const char* pStr)
 {
     ST_TEM_NODE *pTempNode = NULL;
     void *retval = NULL;
-    struct list_head *pList = NULL;
 
     if(pStr == NULL)
     {
