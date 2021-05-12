@@ -1250,6 +1250,8 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             s32Fd = MI_VENC_GetFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
             if (s32Fd < 0)
             {
+                AMIGOS_ERR("[CHN %d]Get fd error!\n", stChnOutputPort.u32ChnId);
+
                 return NULL;
             }
 
@@ -1260,13 +1262,15 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
             s32Ret = select(s32Fd + 1, &read_fds, NULL, NULL, &tv);
             if (s32Ret < 0)
             {
-                MI_VENC_CloseFd(s32Fd);
+                MI_VENC_CloseFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
+                AMIGOS_ERR("[CHN %d]Select error!\n", stChnOutputPort.u32ChnId);
 
                 return NULL;
             }
             else if (0 == s32Ret)
             {
-                MI_VENC_CloseFd(s32Fd);
+                MI_VENC_CloseFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
+                //AMIGOS_ERR("[CHN %d]Time out!\n", stChnOutputPort.u32ChnId);
 
                 return NULL;
             }
@@ -1279,7 +1283,8 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                 s32Ret = MI_VENC_Query(stChnOutputPort.u32ChnId, &stStat);
                 if(s32Ret != MI_SUCCESS || stStat.u32CurPacks == 0)
                 {
-                    MI_VENC_CloseFd(s32Fd);
+                    MI_VENC_CloseFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
+                    AMIGOS_ERR("[CHN %d]Query %d packs %d\n", (MI_VENC_CHN)stChnOutputPort.u32ChnId, s32Ret, stStat.u32CurPacks);
                     return NULL;
                 }
                 stStream.u32PackCount = stStat.u32CurPacks;
@@ -1311,7 +1316,7 @@ void * Sys::SenderMonitor(ST_TEM_BUFFER stBuf)
                     MI_VENC_ReleaseStream(stChnOutputPort.u32ChnId, &stStream);
                 }
             }
-            MI_VENC_CloseFd(s32Fd);
+            MI_VENC_CloseFd((MI_VENC_CHN)stChnOutputPort.u32ChnId);
         }
         break;
 #endif
