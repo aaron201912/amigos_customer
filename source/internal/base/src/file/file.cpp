@@ -143,10 +143,10 @@ void File::UnBindBlock(stModInputInfo_t & stIn)
 
 void File::DataReceiver(void *pData, unsigned int dataSize, void *pUsrData, unsigned char portId)
 {
-    int intFd = 0;
+    long intFd = 0;
     stStreamData_t *pStreamData = NULL;
 
-    intFd = (int)pUsrData;
+    intFd = (long)pUsrData;
     if (sizeof(stStreamData_t) == dataSize)
     {
         pStreamData = (stStreamData_t*)pData;

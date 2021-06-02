@@ -38,7 +38,7 @@ typedef struct stFileOutInfo_s
 typedef struct stFileInInfo_s
 {
     std::string fileName;
-    int intWriteFd;
+    long intWriteFd;
 }stFileInInfo_t;
 
 

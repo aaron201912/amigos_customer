@@ -1,18 +1,27 @@
 .PHONY :all clean gen_exe gen_obj clean_files gen_lib
 
 include $(DB_ALKAID_PROJ)
-
-include $(PROJ_ROOT)/configs/current.configs
-include $(PROJ_ROOT)/release/$(PRODUCT)/$(CHIP)/$(BOARD)/$(TOOLCHAIN)/toolchain.mk
+ifneq ($(USE_X86), 1)
+CC := $(MY_TOOLCHAIN)gcc
+CXX := $(MY_TOOLCHAIN)g++
+AR := $(MY_TOOLCHAIN)ar
+STRIP := $(MY_TOOLCHAIN)strip
+else
+CC := gcc
+CXX := g++
+AR := ar
+STRIP := strip
+GCCFLAGS := -Wall -g
+endif
 
 #GCCFLAGS := -Wall -g -Werror
-GCCFLAGS := -Wall -g -mthumb -pipe -fPIC
+GCCFLAGS ?= -Wall -g -pipe -fPIC
 CXXFLAGS := $(GCCFLAGS) $(LOCAL_CXXFLAGS)
 CXXFLAGS += $(CODEDEFINE) -DLINUX_OS -std=gnu++11
 CXXFLAGS += $(foreach dir,$(INC),-I$(dir))
 
 CFLAGS := $(GCCFLAGS) $(LOCAL_CFLAGS)
-CFLAGS += $(CODEDEFINE) -DLINUX_OS
+CFLAGS += $(CODEDEFINE) -DLINUX_OS -DGIT_COMMIT=\"$(shell git rev-parse HEAD)\" -DBUILD_OWNER=\"$(shell whoami)\" -DBUILD_DATE="\"$(shell date +"%Y-%m-%d %T")\""
 CFLAGS += $(foreach dir,$(INC),-I$(dir))
 
 SRC    +=  $(foreach dir,$(SUBDIRS),$(wildcard $(dir)/*.c)) $(foreach dir,$(SUBDIRS),$(wildcard $(dir)/*.cpp))
