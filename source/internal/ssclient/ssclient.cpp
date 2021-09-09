@@ -11,102 +11,25 @@
  Information is unlawful and strictly prohibited. Sigmastar hereby reserves the
  rights to any and all damages, losses, costs and expenses resulting therefrom.
 */
-
+#include <stdio.h>
+#include <map>
+#include <string>
+#include <vector>
 #include "sys.h"
-#include "slot.h"
-#include "rtsp.h"
-#include "file.h"
-#if INTERFACE_VDEC
-#include "vdec.h"
-#endif
-#if INTERFACE_DIVP
-#include "divp.h"
-#endif
-#if INTERFACE_AO
-#include "ao.h"
-#endif
-#if INTERFACE_AO
-#include "disp.h"
-#endif
-#ifdef INTERFACE_VDISP
-#include "vdisp.h"
-#endif
+#include "amigos.h"
 #include "ssclient.h"
-
-void Sys::Implement(std::string &strKey)
-{
-    unsigned int intId = 0;
-
-    //printf("Connect key str %s\n", strKey.c_str());
-    intId = Sys::FindBlockId(strKey);
-    if (intId == (unsigned int)-1)
-    {
-        printf("Can't find key str %s\n", strKey.c_str());
-        return;
-    }
-    if (!Sys::FindBlock(strKey))
-    {
-        switch (intId)
-        {
-#ifdef INTERFACE_VDEC
-            case E_SYS_MOD_VDEC:
-            {
-                SysChild<Vdec> Vdec(strKey);
-            }
-            break;
-#endif
-            case E_SYS_MOD_RTSP:
-            {
-                SysChild<Rtsp> Rtsp(strKey);
-            }
-            break;
-#ifdef INTERFACE_DIVP
-            case E_SYS_MOD_DIVP:
-            {
-                SysChild<Divp> Divp(strKey);
-            }
-            break;
-#endif
+#include "rtsp.h"
+#include "vdec.h"
+AMIGOS_MODULE_SETUP(Ao);
+AMIGOS_MODULE_SETUP(Rtsp);
+AMIGOS_MODULE_SETUP(File);
+AMIGOS_MODULE_SETUP(Vdec);
+AMIGOS_MODULE_SETUP(Disp);
+AMIGOS_MODULE_SETUP(Slot);
+AMIGOS_MODULE_SETUP(Divp);
 #ifdef INTERFACE_VDISP
-            case E_SYS_MOD_VDISP:
-            {
-                SysChild<Vdisp> Vdisp(strKey);
-            }
-            break;
+AMIGOS_MODULE_SETUP(Vdisp);
 #endif
-            case E_SYS_MOD_FILE:
-            {
-                SysChild<File> File(strKey);
-            }
-            break;
-            case E_SYS_MOD_SLOT:
-            {
-                SysChild<Slot> Slot(strKey);
-            }
-            break;
-#ifdef INTERFACE_DISP
-            case E_SYS_MOD_DISP:
-            {
-                SysChild<Disp> Disp(strKey);
-            }
-            break;
-#endif
-#ifdef INTERFACE_AO
-            case E_SYS_MOD_AO:
-            {
-                SysChild<Ao> Ao(strKey);
-            }
-            break;
-#endif
-            default:
-                return;
-        }
-        GetInstance(strKey)->BuildModTree();
-    }
-
-    return;
-}
-
 SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int width, unsigned int height)
 {
     std::map<std::string, unsigned int> mapModId;
@@ -121,27 +44,7 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
     std::vector<stDecOutInfo_t> vectVdecOut;
     std::vector<stDecOutInfo_t>::iterator itVdecOut;
 
-#ifdef INTERFACE_VDEC
-    mapModId["VDEC"] = E_SYS_MOD_VDEC;
-#endif
-#ifdef INTERFACE_DIVP
-    mapModId["DIVP"] = E_SYS_MOD_DIVP;
-#endif
-#ifdef INTERFACE_AO
-    mapModId["AO"] = E_SYS_MOD_AO;
-#endif
-#ifdef INTERFACE_DISP
-    mapModId["DISP"] = E_SYS_MOD_DISP;
-#endif
-#ifdef INTERFACE_VDISP
-    mapModId["VDISP"] = E_SYS_MOD_VDISP;
-#endif
-    mapModId["RTSP"] = E_SYS_MOD_RTSP;
-    mapModId["FILE"] = E_SYS_MOD_FILE;
-    mapModId["SLOT"] = E_SYS_MOD_SLOT;
-
-    Sys::CreateObj(configIni, mapModId);
-
+    Sys::CreateObj(configIni);
     objName = "RTSP_CLIENT";
     RtspObj = dynamic_cast<Rtsp *>(Sys::GetInstance(objName));
     if (!RtspObj)
@@ -156,7 +59,6 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
         itOutCfg->second.url = liv555Url;
     }
     RtspObj->UpdateInfo(info, isOpenOnvif, outCfg);
-#ifdef INTERFACE_VDEC
     objName = "VDEC_CH0_DEV0";
     VdecObj = dynamic_cast<Vdec *>(Sys::GetInstance(objName));
     if (!VdecObj)
@@ -172,7 +74,6 @@ SsClient::SsClient(const char *liv555Url, const char *configIni, unsigned int wi
         itVdecOut->uintDecOutHeight = height;
     }
     VdecObj->UpdateInfo(VdecInfo, vectVdecOut);
-#endif
 }
 SsClient::~SsClient()
 {

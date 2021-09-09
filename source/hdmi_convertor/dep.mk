@@ -1,6 +1,6 @@
 include $(PROJ_ROOT)/release/customer_tailor/$(CUSTOMER_TAILOR)
 
-DEP += base tem iniparser onvif live555
+DEP += amigos_base tem iniparser onvif live555
 
 ifneq ($(interface_rgn), disable)
 DEP += rgn

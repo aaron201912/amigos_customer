@@ -24,20 +24,16 @@
 #include <linux/i2c-dev.h>
 #include "mi_sensor.h"
 #include "tem.h"
-#include "snr.h"
+#include "sys.h"
+#include "amigos.h"
+#include "rtsp.h"
 #include "vif.h"
 #include "vpe.h"
-#include "ai.h"
-#include "sys.h"
-#include "divp.h"
-#include "rtsp.h"
 #include "venc.h"
-#include "file.h"
 #include "inject.h"
-#include "empty.h"
+#include "divp.h"
+
 //#include "es8156.h"
-
-
 #define I2C_ADAPTER_STR     ("/dev/i2c-1")
 #define ES8156_CHIP_ADDR   (0x08)
 
@@ -439,92 +435,6 @@ static int ES8156_Deinit(void)
 	printf("Deinit ES8156 success.\n");
     return 0;
 }
-
-void Sys::Implement(std::string &strKey)
-{
-    unsigned int intId = 0;
-
-    //printf("Connect key str %s\n", strKey.c_str());
-    intId = Sys::FindBlockId(strKey);
-    if (intId == (unsigned int)-1)
-    {
-        printf("Can't find key str %s\n", strKey.c_str());
-        return;
-    }
-    if (!Sys::FindBlock(strKey))
-    {
-        switch (intId)
-        {
-            case E_SYS_MOD_RTSP:
-            {
-                SysChild<Rtsp> Rtsp(strKey);
-            }
-            break;
-#if INTERFACE_VENC
-            case E_SYS_MOD_VENC:
-            {
-                SysChild<Venc> Venc(strKey);
-            }
-            break;
-#endif
-#if INTERFACE_VPE
-            case E_SYS_MOD_VPE:
-            {
-                SysChild<Vpe> Vpe(strKey);
-            }
-            break;
-#endif
-#if INTERFACE_VIF
-            case E_SYS_MOD_VIF:
-            {
-                SysChild<Vif> Vif(strKey);
-            }
-            break;
-#endif
-#if INTERFACE_AI
-            case E_SYS_MOD_AI:
-            {
-                SysChild<Ai> Ai(strKey);
-            }
-            break;
-#endif
-#if INTERFACE_DIVP
-            case E_SYS_MOD_DIVP:
-            {
-                SysChild<Divp> Divp(strKey);
-            }
-            break;
-#endif
-            case E_SYS_MOD_INJECT:
-            {
-                SysChild<Inject> Inject(strKey);
-            }
-            break;
-#if INTERFACE_SENSOR
-            case E_SYS_MOD_SNR:
-            {
-                SysChild<Snr> Snr(strKey);
-            }
-            break;
-#endif
-            case E_SYS_MOD_FILE:
-            {
-                SysChild<File> File(strKey);
-            }
-            break;
-            case E_SYS_MOD_EMPTY:
-            {
-                SysChild<Empty> Inject(strKey);
-            }
-            break;
-            default:
-                return;
-        }
-        GetInstance(strKey)->BuildModTree();
-    }
-
-    return;
-}
 void *HdmiConvDoCmd(ST_TEM_BUFFER stBuf, ST_TEM_USER_DATA stData)
 {
     SS_HdmiConv_MonitorCmd_e *penCmd;
@@ -660,8 +570,6 @@ static void SetScanMode(SS_HdmiConv_ScanMode_e enScanMode)
             VencObj->UpdateInfo(stVencInfo);
             VencObj->GetInputPortInfo(0, stInputPortInfo);
             stInputPortInfo.curFrmRate /= 2;
-            stInputPortInfo.bindType = 1;
-            stInputPortInfo.bindPara = 0;
             VencObj->UpdateInputPortInfo(0, stInputPortInfo);
         }
         break;
@@ -777,8 +685,6 @@ static void HdmiConvInit(std::vector<Sys *> *pVectVideoPipeLine, std::vector<Sys
     stTmpPackage.pVectVideoPipeLine = pVectVideoPipeLine;
     stTmpPackage.pVectNoSignalVideoPipeLine = pVectNoSignalVideoPipeLine;
     stTmpPackage.pDstObject = pDstObj;
-    PTH_RET_CHK(pthread_attr_init(&stTemAttr.thread_attr));
-    memset(&stTemAttr, 0, sizeof(ST_TEM_ATTR));
     stTemAttr.fpThreadDoSignal = HdmiConvDoCmd;
     stTemAttr.fpThreadWaitTimeOut = HdmiConvSensorMonitor;
     stTemAttr.u32ThreadTimeoutMs = 500;
@@ -810,9 +716,17 @@ static void HdmiConvDeinit()
 
     ES8156_Deinit();
 }
+AMIGOS_MODULE_SETUP(Ai);
+AMIGOS_MODULE_SETUP(Snr);
+AMIGOS_MODULE_SETUP(Vpe);
+AMIGOS_MODULE_SETUP(Vif);
+AMIGOS_MODULE_SETUP(Divp);
+AMIGOS_MODULE_SETUP(Rtsp);
+AMIGOS_MODULE_SETUP(File);
+AMIGOS_MODULE_SETUP(Empty);
+AMIGOS_MODULE_SETUP(Inject);
 int main(int argc, char **argv)
 {
-    std::map<std::string, unsigned int> mapModId;
     std::map<std::string, Sys *> maskMap;
     std::vector<Sys *> vectVideoPipeLine;
     std::vector<Sys *> vectNoSignalVideoPipeLine;
@@ -834,18 +748,7 @@ int main(int argc, char **argv)
 
         return -1;
     }
-    mapModId["SNR"] = E_SYS_MOD_SNR;
-    mapModId["RTSP"] = E_SYS_MOD_RTSP;
-    mapModId["VENC"] = E_SYS_MOD_VENC;
-    mapModId["VPE"] = E_SYS_MOD_VPE;
-    mapModId["VIF"] = E_SYS_MOD_VIF;
-    mapModId["AI"] = E_SYS_MOD_AI;
-    mapModId["FILE"] = E_SYS_MOD_FILE;
-    mapModId["EMPTY"] = E_SYS_MOD_EMPTY;
-    mapModId["INJECT"] = E_SYS_MOD_INJECT;
-    mapModId["DIVP"] = E_SYS_MOD_DIVP;
-    Sys::CreateObj(argv[1], mapModId);
-
+    Sys::CreateObj(argv[1]);
     //Start to set signal object
     objName = "VIF_CH0_DEV0";
     VifObj = dynamic_cast<Vif *>(Sys::GetInstance(objName));
@@ -857,7 +760,6 @@ int main(int argc, char **argv)
     }
     vectVideoPipeLine.push_back(VifObj);
     maskMap[objName] = VifObj;
-
     objName = "VPE_CH0_DEV0";
     VpeObj = dynamic_cast<Vpe *>(Sys::GetInstance(objName));   
     if (!VpeObj)
@@ -868,7 +770,6 @@ int main(int argc, char **argv)
     }
     vectVideoPipeLine.push_back(VpeObj);
     maskMap[objName] = VpeObj;
-
     objName = "VENC_CH0_DEV0";
     VencObj = dynamic_cast<Venc *>(Sys::GetInstance(objName));   
     if (!VencObj)
@@ -890,7 +791,6 @@ int main(int argc, char **argv)
         return -1;
     }
     vectNoSignalVideoPipeLine.push_back(InjectObj);
-
     objName = "DIVP_CH0_DEV0";
     DivpObj = dynamic_cast<Divp *>(Sys::GetInstance(objName));
     if (!DivpObj)
@@ -900,7 +800,6 @@ int main(int argc, char **argv)
         return -1;
     }
     vectNoSignalVideoPipeLine.push_back(DivpObj);
-
     objName = "VENC_CH1_DEV0";
     Venc1Obj = dynamic_cast<Venc *>(Sys::GetInstance(objName));
     if (!Venc1Obj)

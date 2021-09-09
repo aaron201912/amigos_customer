@@ -1,14 +1,12 @@
-include $(DB_BUILD_TOP)/mi_dep.mk
-
 LINK_TYPE := static
 INTER_LINK_TYPE := static
 
-INC  += $(DB_BUILD_TOP)/../common/live555/UsageEnvironment/include
-INC  += $(DB_BUILD_TOP)/../common/live555/groupsock/include
-INC  += $(DB_BUILD_TOP)/../common/live555/liveMedia/include
-INC  += $(DB_BUILD_TOP)/../common/live555/BasicUsageEnvironment/include
-INC  += $(DB_BUILD_TOP)/../common/live555/mediaServer/include
-INC  += $(DB_BUILD_TOP)/internal/base/include/
+INC  += $(BUILD_TOP)/../common/live555/UsageEnvironment/include
+INC  += $(BUILD_TOP)/../common/live555/groupsock/include
+INC  += $(BUILD_TOP)/../common/live555/liveMedia/include
+INC  += $(BUILD_TOP)/../common/live555/BasicUsageEnvironment/include
+INC  += $(BUILD_TOP)/../common/live555/mediaServer/include
+INC  += $(BUILD_TOP)/internal/amigos_base/include/
 
 
 ifneq ($(interface_vif), disable)
@@ -78,11 +76,6 @@ ifneq ($(interface_hdmi), disable)
 LIBS += -lmi_hdmi
 endif
 
-ifneq ($(CHIP), i2)
-LIBS += -lcam_fs_wrapper -lcam_os_wrapper
-endif
-
-LIBS += -lmi_sys
 
 
 

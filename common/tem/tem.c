@@ -65,6 +65,7 @@ typedef struct ST_TEM_DATA_NODE_s{
 }ST_TEM_DATA_NODE;
 
 typedef struct{
+    pthread_attr_t thread_attr;
     pthread_mutex_t mutex;
     pthread_mutex_t data_mutex;
     pthread_cond_t cond;
@@ -503,12 +504,38 @@ int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
     {
         pTemp->maxEventCout = stAttr.maxEventCout;
     }
-    /*End*/
-
-    /*Malloc Tem info*/
     pTemp->pTemInfo = (ST_TEM_INFO *)malloc(sizeof(ST_TEM_INFO));
     ASSERT(pTemp->pTemInfo);
     memset(pTemp->pTemInfo, 0, sizeof(ST_TEM_INFO));
+
+    /*End*/
+    MUTEXCHECK(pthread_mutex_lock(&m_MutexTem));
+    pList = list_find(&stTemNodeHead, (void *)pStr, _TemFindFp);
+    if (pList != &stTemNodeHead)
+    {
+        ERROR("List exist: %s !!!\n", pStr);
+        MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
+        if (pTemp->pTemInfo)
+            free(pTemp->pTemInfo);
+        if (pTemp->pThreadName)
+            free(pTemp->pThreadName);
+        if (pTemp->pTemAttr)
+        {
+            if (pTemp->pTemAttr->stTemBuf.pTemBuffer
+                && pTemp->pTemAttr->stTemBuf.u32TemBufferSize != 0)
+            {
+                free(pTemp->pTemAttr->stTemBuf.pTemBuffer);
+            }
+            free(pTemp->pTemAttr);
+        }
+        free(pTemp);
+        return -1;
+    }
+    list_add_tail(&pTemp->stTemNodeList, &stTemNodeHead);
+    MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
+
+    /*Malloc Tem info*/
+    PTH_RET_CHK(pthread_attr_init(&pTemp->pTemInfo->thread_attr));
     PTH_RET_CHK(pthread_condattr_init(&(pTemp->pTemInfo->cond_attr)));
     PTH_RET_CHK(pthread_condattr_setclock(&(pTemp->pTemInfo->cond_attr), CLOCK_MONOTONIC));
     PTH_RET_CHK(pthread_mutexattr_init(&(pTemp->pTemInfo->mutex_attr)));
@@ -517,45 +544,8 @@ int TemOpen(const char* pStr, ST_TEM_ATTR stAttr)
     PTH_RET_CHK(pthread_mutexattr_settype(&(pTemp->pTemInfo->data_mutex_attr), PTHREAD_MUTEX_RECURSIVE));
     PTH_RET_CHK(pthread_mutex_init(&(pTemp->pTemInfo->data_mutex), &(pTemp->pTemInfo->data_mutex_attr)));
     PTH_RET_CHK(pthread_cond_init(&(pTemp->pTemInfo->cond), &(pTemp->pTemInfo->cond_attr)));
-    PTH_RET_CHK(pthread_create(&(pTemp->pTemInfo->thread), &(pTemp->pTemAttr->thread_attr), _TemThreadMain, (void *)pTemp));
+    PTH_RET_CHK(pthread_create(&(pTemp->pTemInfo->thread), &(pTemp->pTemInfo->thread_attr), _TemThreadMain, (void *)pTemp));
     /*End*/
-
-    MUTEXCHECK(pthread_mutex_lock(&m_MutexTem));
-    pList = list_find(&stTemNodeHead, (void *)pStr, _TemFindFp);
-    if (pList != &stTemNodeHead)
-    {
-        ERROR("List exist: %s !!!\n", pStr);
-        MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
-        PTH_RET_CHK(pthread_mutexattr_destroy(&pTemp->pTemInfo->mutex_attr));
-        PTH_RET_CHK(pthread_mutex_destroy(&pTemp->pTemInfo->mutex));
-        PTH_RET_CHK(pthread_mutexattr_destroy(&pTemp->pTemInfo->data_mutex_attr));
-        PTH_RET_CHK(pthread_mutex_destroy(&pTemp->pTemInfo->data_mutex));
-        PTH_RET_CHK(pthread_condattr_destroy(&pTemp->pTemInfo->cond_attr));
-        PTH_RET_CHK(pthread_cond_destroy(&pTemp->pTemInfo->cond));
-        free(pTemp->pTemInfo);
-        pTemp->pTemInfo = NULL;
-
-        if (pTemp->pTemAttr->stTemBuf.u32TemBufferSize != 0 && pTemp->pTemAttr->stTemBuf.pTemBuffer != NULL)
-        {
-            free(pTemp->pTemAttr->stTemBuf.pTemBuffer);
-            pTemp->pTemAttr->stTemBuf.pTemBuffer = NULL;
-        }
-        free(pTemp->pTemAttr);
-        pTemp->pTemAttr = NULL;
-
-        free(pTemp->pThreadName);
-        pTemp->pThreadName = NULL;
-
-        free(pTemp);
-        pTemp = NULL;
-
-        return -1;
-    }
-    else
-    {
-        list_add_tail(&pTemp->stTemNodeList, &stTemNodeHead);
-    }
-    MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
 
     return 0;
 }
@@ -586,25 +576,32 @@ int TemClose(const char* pStr)
     PTH_RET_CHK(pthread_mutex_destroy(&pTempNode->pTemInfo->mutex));
     PTH_RET_CHK(pthread_condattr_destroy(&pTempNode->pTemInfo->cond_attr));
     PTH_RET_CHK(pthread_cond_destroy(&pTempNode->pTemInfo->cond));
-
+    PTH_RET_CHK(pthread_attr_destroy(&pTempNode->pTemInfo->thread_attr));
     MUTEXCHECK(pthread_mutex_lock(&m_MutexTem));
     list_del(&pTempNode->stTemNodeList);
     MUTEXCHECK(pthread_mutex_unlock(&m_MutexTem));
 
-    free(pTempNode->pTemInfo);
-    pTempNode->pTemInfo = NULL;
-
-    if (pTempNode->pTemAttr->stTemBuf.u32TemBufferSize != 0 && pTempNode->pTemAttr->stTemBuf.pTemBuffer != NULL)
+    if (pTempNode->pTemInfo)
     {
-        free(pTempNode->pTemAttr->stTemBuf.pTemBuffer);
-        pTempNode->pTemAttr->stTemBuf.pTemBuffer = NULL;
+        free(pTempNode->pTemInfo);
+        pTempNode->pTemInfo = NULL;
     }
-    free(pTempNode->pTemAttr);
-    pTempNode->pTemAttr = NULL;
-
-    free(pTempNode->pThreadName);
-    pTempNode->pThreadName = NULL;
-
+    if (pTempNode->pTemAttr)
+    {
+        if (pTempNode->pTemAttr->stTemBuf.pTemBuffer
+            && pTempNode->pTemAttr->stTemBuf.u32TemBufferSize != 0)
+        {
+            free(pTempNode->pTemAttr->stTemBuf.pTemBuffer);
+        }
+        pTempNode->pTemAttr->stTemBuf.pTemBuffer = NULL;
+        free(pTempNode->pTemAttr);
+        pTempNode->pTemAttr = NULL;
+    }
+    if (pTempNode->pThreadName)
+    {
+        free(pTempNode->pThreadName);
+        pTempNode->pThreadName = NULL;
+    }
     free(pTempNode);
     pTempNode = NULL;
 

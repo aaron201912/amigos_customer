@@ -1,31 +1,13 @@
+BUILD_TOP:=$(shell pwd)
 ALKAID_PATH ?= ~/ALKAID/
-DB_BUILD_TOP:=$(shell pwd)
-DB_OUT_PATH:=$(DB_BUILD_TOP)/out
-DB_ALKAID_PROJ:=$(ALKAID_PATH)/project/configs/current.configs
-DB_3PARTY_PATH:=$(DB_BUILD_TOP)/../3rdparty
-DB_IMAGE_PATH := $(DB_BUILD_TOP)/image
-include $(DB_ALKAID_PROJ)
--include $(MODULE)/$(MODULE).mk
-ifeq ($(CROSS_COMPILE), )
-MY_TOOLCHAIN := $(TOOLCHAIN_REL)
-else
-MY_TOOLCHAIN := $(CROSS_COMPILE)
-endif
-unexport CROSS_COMPILE
+OUT_PATH:=$(BUILD_TOP)/out
+ALKAID_PROJ:=$(ALKAID_PATH)/project
+ALKAID_PROJ_CONFIG:=$(ALKAID_PATH)/project/configs/current.configs
+3PARTY_PATH:=$(BUILD_TOP)/../3rdparty
+IMAGE_PATH := $(BUILD_TOP)/release
 
-TOOLCHAIN_REL := $(MY_TOOLCHAIN)
-ifneq ($(USE_X86), 1)
-CC := $(MY_TOOLCHAIN)gcc
-CXX := $(MY_TOOLCHAIN)g++
-AR := $(MY_TOOLCHAIN)ar
-STRIP := $(MY_TOOLCHAIN)strip
-else
-CC := gcc
-CXX := g++
-AR := ar
-STRIP := strip
-GCCFLAGS := -Wall -g
-endif
+include $(BUILD_TOP)/mi_dep.mk
+
 MODULES := preview 
 ifeq ($(PRODUCT), nvr)
 MODULES += rtspclient kvm_host
@@ -34,7 +16,7 @@ ifeq ($(PRODUCT), ipc)
 MODULES += hdmi_convertor kvm_dev
 endif
 
-LIBS_PATH := ../common/ ./internal/
+LIBS_PATH := ../common internal
 
 INTERNAL_LIBS := $(notdir $(wildcard $(foreach m,$(LIBS_PATH),$(m)/*)))
 MODULES_CLEAN := $(foreach m,$(MODULES),$(m)_clean)
@@ -45,23 +27,23 @@ MODULES_OBJS_CLEAN := $(foreach m,$(INTERNAL_LIBS),$(m)_obj_clean)
 MODULES_LIBS_ALL := $(foreach m,$(INTERNAL_LIBS),$(m)_lib_all)
 MODULES_LIBS_CLEAN := $(foreach m,$(INTERNAL_LIBS),$(m)_lib_clean)
 MODULES_INSTALL := $(foreach m,$(MODULES),$(m)_install)
-3RD_PARTY := $(foreach m,$(notdir $(wildcard $(DB_3PARTY_PATH)/*)),$(m)_3rd_party_all)
+3RD_PARTY := $(foreach m,$(notdir $(wildcard $(3PARTY_PATH)/*)),$(m)_3rd_party_all)
 
 export PROJ_ROOT CHIP PRODUCT BOARD TOOLCHAIN TOOLCHAIN_VERSION TOOLCHAIN_REL KERNEL_VERSION CUSTOMER_TAILOR CUSTOMER_OPTIONS MOD_PREFIX INTERFACE_ENABLED INTERFACE_DISABLED MHAL_ENABLED MHAL_DISABLED DUAL_OS CHIP_ALIAS MY_TOOLCHAIN
-export DB_BUILD_TOP
-export DB_OUT_PATH DB_IMAGE_PATH
-export DB_PROJECT
-export DB_ALKAID_PROJ
+export BUILD_TOP
+export OUT_PATH IMAGE_PATH
+export ALKAID_PROJ
+export ALKAID_PROJ_CONFIG
 export TARGET_OUT
 export LIBS_PATH
-export DB_3PARTY_PATH
+export 3PARTY_PATH
+export ARCH
 
-.PHONY: all 3rdparty lib obj clean install depend_internal depend_internal_clean depend_3rd_party $(MODULES) $(MODULES_CLEAN) $(MODULES_APP_ALL) $(MODULES_APP_CLEAN) $(MODULES_OBJS_ALL) $(MODULES_OBJS_CLEAN) $(MODULES_LIBS_ALL) $(MODULES_LIBS_CLEAN)
+.PHONY: all 3rdparty lib obj clean install depend_internal depend_internal_clean $(MODULES) $(MODULES_CLEAN) $(MODULES_APP_ALL) $(MODULES_APP_CLEAN) $(MODULES_OBJS_ALL) $(MODULES_OBJS_CLEAN) $(MODULES_LIBS_ALL) $(MODULES_LIBS_CLEAN)
 
--include $(foreach mod,$(MODULES_IN),$(mod)/dep.mk)
+-include $(foreach mod,$(MODULES_IN),$(BUILD_TOP)/$(mod)/dep.mk)
 
 all:
-	#@$(MAKE) MODULES_IN="$(MODULES)" depend_3rd_party
 	@$(MAKE) MODULES_IN="$(MODULES)" depend_internal
 ifneq ($(MODULES_APP_ALL), )
 	@$(MAKE) $(MODULES_APP_ALL)
@@ -71,13 +53,18 @@ endif
 	@$(MAKE) MODULES_IN="$(MODULES)" depend_3rd_party
 
 clean:
-	@$(MAKE) $(foreach mod,$(MODULES),$(patsubst %,%_clean,$(mod)))
+	@$(MAKE) $(foreach mod,$(MODULES),$(patsubst %,%_app_clean,$(mod)))
 	@$(MAKE) MODULES_IN="$(MODULES)" depend_internal_clean
-	@rm $(DB_OUT_PATH) -rf
-	@rm ./obj/ -rf
+	@rm $(OUT_PATH) -rf
+	@rm $(IMAGE_PATH) -rf
 
 install:
+	@rm -rvf $(PROJ_ROOT)/release/chip/$(CHIP)/$(PRODUCT)/common/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/bin/mi_demo
+	@mkdir -p $(PROJ_ROOT)/release/chip/$(CHIP)/$(PRODUCT)/common/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/bin/mi_demo/
 	@$(MAKE) $(MODULES_INSTALL)
+ifneq ($(wildcard $(IMAGE_PATH)),)
+	@cp -rvf $(IMAGE_PATH)/* $(PROJ_ROOT)/release/chip/$(CHIP)/$(PRODUCT)/common/$(TOOLCHAIN)/$(TOOLCHAIN_VERSION)/bin/mi_demo/
+endif
 
 depend_internal:
 ifneq ($(DEP), )
@@ -105,58 +92,36 @@ ifneq ($(3RD_PARTY_DEP1), )
 	@$(MAKE) $(foreach m,$(sort $(3RD_PARTY_DEP1)),$(m)_3rd_party_all)
 endif
 
-module_install:
-ifneq ($(APP_PREFIX), )
-	@mkdir -p $(APP_PREFIX)/bin/
-	@mkdir -p $(APP_PREFIX)/lib/
-	@cp -vrf $(DB_OUT_PATH)/app/$(MODULE) $(APP_PREFIX)/
-	@$(TOOLCHAIN_REL)strip --strip-unneeded $(APP_PREFIX)/$(MODULE)
-ifneq ($(MODULE_REL_FILES), )
-	$(foreach n,$(MODULE_REL_FILES),cp -rfvd $(n) $(APP_PREFIX)/;)
-endif
-ifneq ($(MODULE_REL_LIB), )
-	$(foreach n,$(MODULE_REL_LIB),cp -rfvd $(n) $(APP_PREFIX)/lib;)
-	@$(TOOLCHAIN_REL)strip --strip-unneeded $(APP_PREFIX)/lib/*
-endif
-ifneq ($(MODULE_REL_BIN), )
-	$(foreach n,$(MODULE_REL_BIN),cp -rfvd $(n) $(APP_PREFIX)/bin;)
-	@$(TOOLCHAIN_REL)strip --strip-unneeded $(APP_PREFIX)/bin/*
-endif
-	@rm -rfv $(DB_IMAGE_PATH)/$(shell basename $(APP_PREFIX)).sqfs
-	@$(PROJ_ROOT)/image/build/mksquashfs_xz $(APP_PREFIX) $(DB_IMAGE_PATH)/$(shell basename $(APP_PREFIX)).sqfs -comp xz -all-root
-endif
-
 $(3RD_PARTY):
-	@$(MAKE) -C $(DB_3PARTY_PATH)/$(patsubst %_3rd_party_all,%,$@)
+	@$(MAKE) -C $(3PARTY_PATH)/$(patsubst %_3rd_party_all,%,$@)
 
 $(MODULES_INSTALL):
-	@$(MAKE) MODULE=$(patsubst %_install,%,$@) module_install
+	@$(MAKE) MODULE_NAME=$(patsubst %_install,%,$@) MODULE_PATH=$(patsubst %_install,%,$@) -f ./build.mk module_install
 
 $(MODULES):
-	#@$(MAKE) MODULES_IN=$@ depend_3rd_party
 	@$(MAKE) MODULES_IN=$@ depend_internal
 	@$(MAKE) $(patsubst %,%_app_all,$@)
 
 $(MODULES_CLEAN):
 	@$(MAKE) $(patsubst %_clean,%_app_clean,$@)
-	@$(MAKE) MODULES_IN=$@ depend_internal_clean
+	@$(MAKE) MODULES_IN=$(patsubst %_clean,%,$@) depend_internal_clean
 
 $(MODULES_APP_ALL):
-	@$(MAKE) MODULE=$(patsubst %_app_all,%,$@) -f ./MakeApp.mk all
+	@$(MAKE) MODULE_NAME=$(patsubst %_app_all,%,$@) MODULE_PATH=$(patsubst %_app_all,%,$@) -f ./build.mk gen_exe
 
 $(MODULES_APP_CLEAN):
-	@$(MAKE) MODULE=$(patsubst %_app_clean,%,$@) -f ./MakeApp.mk clean
+	@$(MAKE) MODULE_NAME=$(patsubst %_app_clean,%,$@) MODULE_PATH=$(patsubst %_app_clean,%,$@) -f ./build.mk clean_files
 
 $(MODULES_OBJS_ALL):
-	@$(MAKE) MODULE_OBJ=$(patsubst %_obj_all,%,$@) MODULE_OBJ_SRC=$(filter %$(patsubst %_obj_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) -f ./MakeObj.mk all
+	@$(MAKE) MODULE_PATH=$(filter %$(patsubst %_obj_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) -f ./build.mk gen_obj
 
 $(MODULES_OBJS_CLEAN):
-	@$(MAKE) MODULE_OBJ=$(patsubst %_obj_clean,%,$@) MODULE_OBJ_SRC=$(filter %$(patsubst %_obj_clean,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) -f ./MakeObj.mk clean
+	$(MAKE) MODULE_PATH=$(filter %$(patsubst %_obj_clean,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) -f ./build.mk clean_files
 
 $(MODULES_LIBS_ALL):
-	@$(MAKE) MODULE_LIB=$(patsubst %_lib_all,%,$@) LIB_TYPE=static -f ./MakeLib.mk all
-	@$(MAKE) MODULE_LIB=$(patsubst %_lib_all,%,$@) LIB_TYPE=dynamic -f ./MakeLib.mk all
+	@$(MAKE) MODULE_NAME=$(patsubst %_lib_all,%,$@) MODULE_PATH=$(filter %$(patsubst %_lib_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) LIB_TYPE=static -f ./build.mk gen_lib
+	@$(MAKE) MODULE_NAME=$(patsubst %_lib_all,%,$@) MODULE_PATH=$(filter %$(patsubst %_lib_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) LIB_TYPE=dynamic -f ./build.mk gen_lib
 
 $(MODULES_LIBS_CLEAN):
-	@$(MAKE) MODULE_LIB=$(patsubst %_lib_clean,%,$@) LIB_TYPE=static -f ./MakeLib.mk clean
-	@$(MAKE) MODULE_LIB=$(patsubst %_lib_clean,%,$@) LIB_TYPE=dynamic -f ./MakeLib.mk clean
+	@$(MAKE) MODULE_NAME=$(patsubst %_lib_clean,%,$@) MODULE_PATH=$(filter %$(patsubst %_lib_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) LIB_TYPE=static -f ./build.mk clean_files
+	@$(MAKE) MODULE_NAME=$(patsubst %_lib_clean,%,$@) MODULE_PATH=$(filter %$(patsubst %_lib_all,%,$@),$(wildcard $(foreach m,$(LIBS_PATH),$(m)/*))) LIB_TYPE=dynamic -f ./build.mk clean_files

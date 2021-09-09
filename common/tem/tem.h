@@ -55,21 +55,20 @@ extern "C" {
 
 typedef struct
 {
-	void *pUserData;
-	unsigned int u32UserDataSize;
-	unsigned int u32BufferRealSize;
+    void *pUserData;
+    unsigned int u32UserDataSize;
+    unsigned int u32BufferRealSize;
 }ST_TEM_USER_DATA;
 typedef struct
 {
-	void *pTemBuffer;
-	unsigned int u32TemBufferSize;
+    void *pTemBuffer;
+    unsigned int u32TemBufferSize;
 }ST_TEM_BUFFER;
 
 typedef void *(*FP_TEM_DOSIGNAL)(ST_TEM_BUFFER, ST_TEM_USER_DATA);
 typedef void *(*FP_TEM_DOMONITOR)(ST_TEM_BUFFER);
 
 typedef struct{
-    pthread_attr_t thread_attr;
     unsigned int u32ThreadTimeoutMs;
     FP_TEM_DOMONITOR fpThreadWaitTimeOut;
     FP_TEM_DOSIGNAL fpThreadDoSignal;

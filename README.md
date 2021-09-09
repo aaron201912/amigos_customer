@@ -4,25 +4,25 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 
 编译方法:
 
-	编译方法：
+	编译和打包方法：
 		1.进入到amigos/source/
 		2.declare -x ALKAID_PATH=xxxx 
-		3.make clean&make 
+		3.make clean&make
+		4.编译完成后输入 make install
+			会在 release/ 下打包成文件夹和squashfs
 		4. 如果ALIAID的project是337de的，则编译的amigos是source端的，如果ALIAID的project是202/203/msr650的，则编译出来的amigos是Sink端的。
 	执行：
 		Source端：
-			bin: amigos_customer/source/out/app/hdmi_convertor
+			应用运行环境 amigos_cusomer/release/hdmiap
+			bin: amigos_customer/source/out/app/arm/hdmi_convertor
 			config: amigos_customer/source/hdmi_convertor/config/2M_AUDIO.ini
 			在板子上执行： ./hdmi_convertor ./2M_AUDIO.ini
 				2M_AUDIO.ini所在位置：
 					339G使用source/hdmi_convertor/config/alderaan/2M_AUDIO.ini
 					337DE使用source/hdmi_convertor/config/jedi/2M_AUDIO.ini
-					请注意：
-						文件source/hdmi_convertor/config/nosignal.h264或者source/hdmi_convertor/config/nosignal.h265需要存放到2M_AUDIO.ini所指定的板子的路径下：
-							FILE_READ_PATH=/customer/nosignal.h265
-						若没有此路径，请改ini配置对应的路径
 		Sink端：
-			bin: amigos_customer/source/out/app/rtspclient
+			应用运行环境 amigos_cusomer/release/hdmiplayer
+			bin: amigos_customer/source/out/app/arm/rtspclient
 			功能: 播放一路码流
 			config: 
 				--->202使用 amigos_customer/source/rtspclient/config/RTSP_CLIENT_DISP.ini
@@ -36,7 +36,7 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 				--->msr650使用 ./rtspclient rtsp://xxx.xxx.xxx.xxx RTSP_CLIENT_DIVP_HDMI.ini 1920 1080 
 					--->注：hdmi默认输出1080p60
 					
-			bin: amigos_customer/source/out/app/preview
+			bin: amigos_customer/source/out/app/arm/preview
 			功能: 根据不同的ini配置可播放一路或多路码流，次应用相当于一个全功能版本，可以任意配置ini达到串流的目的，202、203也可使用此应用，但是目前使用rtspclient已经满足需求。
 			config:
 				--->msr650以hdmitx输出一路video amigos_customer/source/preview/config/naboo/RTSP_CLIENT_DIVP_HDMI.ini
@@ -57,7 +57,3 @@ Amigos这一套软件系统为了达到尽量少改动代码的目的，把mi模
 			make xxx  --->例如编译wpa: 
 				--->wpa 依赖于libnl和openssl，先编译
 				然后再编译wpa：make wpa_supplicant_3rd_party_all
-		
-		打包流程：
-			编译完成后输入 make install
-			会在 image/ 下打包成文件夹或者是squashfs
