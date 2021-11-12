@@ -85,11 +85,30 @@ void Venc::LoadDb()
 {
     stVencInfo.intWidth = GetIniInt(stModDesc.modKeyString,"STREAM_W");
     stVencInfo.intHeight = GetIniInt(stModDesc.modKeyString,"STREAM_H");
-    stVencInfo.intBitRate = GetIniInt(stModDesc.modKeyString,"BIT_RATE");
     stVencInfo.intEncodeType = GetIniInt(stModDesc.modKeyString,"EN_TYPE");
     stVencInfo.intEncodeFps = GetIniInt(stModDesc.modKeyString,"EN_FPS");
     stVencInfo.intMultiSlice = GetIniInt(stModDesc.modKeyString,"MULTI_SLICE");
     stVencInfo.intSliceRowCnt = GetIniInt(stModDesc.modKeyString,"SLICE_ROW_CNT");
+    stVencInfo.intRcMode = GetIniInt(stModDesc.modKeyString,"RC_MODE", 1);
+    switch (stVencInfo.intRcMode)
+    {
+        case 0:
+            stVencInfo.stCbrCfg.intBitRate = GetIniInt(stModDesc.modKeyString, "BIT_RATE");
+            break;
+        case 1:
+            stVencInfo.stVbrCfg.intBitRate = GetIniInt(stModDesc.modKeyString, "BIT_RATE");
+            stVencInfo.stVbrCfg.intMinQp = GetIniInt(stModDesc.modKeyString, "MIN_QP", 20);
+            stVencInfo.stVbrCfg.intMaxQp = GetIniInt(stModDesc.modKeyString, "MAX_QP", 48);
+            break;
+        case 2:
+            stVencInfo.stFixQpCfg.intIQp = GetIniInt(stModDesc.modKeyString, "IQP", 20);
+            stVencInfo.stFixQpCfg.intPQp = GetIniInt(stModDesc.modKeyString, "PQP", 20);
+            break;
+        default:
+            AMIGOS_ERR("RC Mode error!\n");
+            return;
+    }
+
     mapModOutputInfo[0].stStreanInfo.eStreamType = E_STREAM_VIDEO_CODEC_DATA; 
     mapModOutputInfo[0].stStreanInfo.stEsInfo.enVideoCodecFmt = (E_VIDEO_CODEC_FORMAT)stVencInfo.intEncodeType;
     mapModOutputInfo[0].stStreanInfo.stEsInfo.streamWidth = stVencInfo.intWidth;
@@ -111,14 +130,44 @@ void Venc::Init()
             stChnAttr.stVeAttr.stAttrH264e.u32MaxPicWidth = (MI_U32)stVencInfo.intWidth;
             stChnAttr.stVeAttr.stAttrH264e.u32MaxPicHeight = (MI_U32)stVencInfo.intHeight;
             stChnAttr.stVeAttr.stAttrH264e.bByFrame = (stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE;
-            stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H264VBR;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.intBitRate) * 1024 * 1024;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateDen = 1;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32Gop = stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateNum * 2;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32StatTime = 0;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32MaxQp = 48;
-            stChnAttr.stRcAttr.stAttrH264Vbr.u32MinQp = 20;
+            switch (stVencInfo.intRcMode)
+            {
+                case 0:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H264CBR;
+                    stChnAttr.stRcAttr.stAttrH264Cbr.u32BitRate = ((MI_U32)stVencInfo.stCbrCfg.intBitRate) * 1024 * 1024;
+                    stChnAttr.stRcAttr.stAttrH264Cbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH264Cbr.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH264Cbr.u32Gop = stChnAttr.stRcAttr.stAttrH264Cbr.u32SrcFrmRateNum * 2;
+                    stChnAttr.stRcAttr.stAttrH264Cbr.u32StatTime = 0;
+                }
+                break;
+                case 1:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H264VBR;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.stVbrCfg.intBitRate) * 1024 * 1024;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32MaxQp = stVencInfo.stVbrCfg.intMaxQp;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32MinQp = stVencInfo.stVbrCfg.intMinQp;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32Gop = stChnAttr.stRcAttr.stAttrH264Vbr.u32SrcFrmRateNum * 2;
+                    stChnAttr.stRcAttr.stAttrH264Vbr.u32StatTime = 0;
+                }
+                break;
+                case 2:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H264FIXQP;
+                    stChnAttr.stRcAttr.stAttrH264FixQp.u32IQp = stVencInfo.stFixQpCfg.intIQp;
+                    stChnAttr.stRcAttr.stAttrH264FixQp.u32PQp = stVencInfo.stFixQpCfg.intPQp;
+                    stChnAttr.stRcAttr.stAttrH264FixQp.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH264FixQp.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH264FixQp.u32Gop = stChnAttr.stRcAttr.stAttrH264FixQp.u32SrcFrmRateNum * 2;
+                }
+                break;
+                default:
+                    AMIGOS_ERR("RC Mode error!\n");
+                    return;
+            }
         }
         break;
         case E_STREAM_H265:
@@ -129,14 +178,44 @@ void Venc::Init()
             stChnAttr.stVeAttr.stAttrH265e.u32MaxPicWidth = (MI_U32)stVencInfo.intWidth;
             stChnAttr.stVeAttr.stAttrH265e.u32MaxPicHeight = (MI_U32)stVencInfo.intHeight;
             stChnAttr.stVeAttr.stAttrH265e.bByFrame = (stVencInfo.intMultiSlice != -1) ? !stVencInfo.intMultiSlice : TRUE;
-            stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H265VBR;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.intBitRate) * 1024 * 1024;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateDen = 1;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32Gop = stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateNum * 2;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32StatTime = 0;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32MaxQp = 48;
-            stChnAttr.stRcAttr.stAttrH265Vbr.u32MinQp = 20;
+            switch (stVencInfo.intRcMode)
+            {
+                case 0:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H265CBR;
+                    stChnAttr.stRcAttr.stAttrH265Cbr.u32BitRate = ((MI_U32)stVencInfo.stCbrCfg.intBitRate) * 1024 * 1024;
+                    stChnAttr.stRcAttr.stAttrH265Cbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH265Cbr.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH265Cbr.u32Gop = stChnAttr.stRcAttr.stAttrH265Cbr.u32SrcFrmRateNum * 2;
+                    stChnAttr.stRcAttr.stAttrH265Cbr.u32StatTime = 0;
+                }
+                break;
+                case 1:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H265VBR;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32MaxBitRate = ((MI_U32)stVencInfo.stVbrCfg.intBitRate) * 1024 * 1024;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32MaxQp = stVencInfo.stVbrCfg.intMaxQp;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32MinQp = stVencInfo.stVbrCfg.intMinQp;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32Gop = stChnAttr.stRcAttr.stAttrH265Vbr.u32SrcFrmRateNum * 2;
+                    stChnAttr.stRcAttr.stAttrH265Vbr.u32StatTime = 0;
+                }
+                break;
+                case 2:
+                {
+                    stChnAttr.stRcAttr.eRcMode = E_MI_VENC_RC_MODE_H265FIXQP;
+                    stChnAttr.stRcAttr.stAttrH265FixQp.u32IQp = stVencInfo.stFixQpCfg.intIQp;
+                    stChnAttr.stRcAttr.stAttrH265FixQp.u32PQp = stVencInfo.stFixQpCfg.intPQp;
+                    stChnAttr.stRcAttr.stAttrH265FixQp.u32SrcFrmRateNum = (MI_U32)((stVencInfo.intEncodeFps != -1) ? stVencInfo.intEncodeFps: 30);
+                    stChnAttr.stRcAttr.stAttrH265FixQp.u32SrcFrmRateDen = 1;
+                    stChnAttr.stRcAttr.stAttrH265FixQp.u32Gop = stChnAttr.stRcAttr.stAttrH265FixQp.u32SrcFrmRateNum * 2;
+                }
+                break;
+                default:
+                    AMIGOS_ERR("RC Mode error!\n");
+                    return;
+            }
         }
         break;
         case E_STREAM_JPEG:

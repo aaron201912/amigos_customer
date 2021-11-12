@@ -17,12 +17,37 @@
 
 #include "sys.h"
 
+typedef struct stVencVbrConfig_s
+{
+    int intGop;
+    int intMinQp;
+    int intMaxQp;
+    int intBitRate;
+}stVencVbrConfig_t;
+typedef struct stVencCbrConfig_s
+{
+    int intGop;
+    int intBitRate;
+}stVencCbrConfig_t;
+typedef struct stVencFixQpConfig_s
+{
+    int intGop;
+    int intIQp;
+    int intPQp;
+}stVencFixQpConfig_t;
+
 typedef struct stVencInfo_s
 {
     int intWidth;
     int intHeight;
-    int intBitRate;
     int intEncodeType;
+    int intRcMode; //0 cbr, 1 vbr, 2 vbr fixqp
+    union
+    {
+        stVencVbrConfig_t stVbrCfg;
+        stVencCbrConfig_t stCbrCfg;
+        stVencFixQpConfig_t stFixQpCfg;
+    };
     int intEncodeFps;
     int intMultiSlice;
     int intSliceRowCnt;
