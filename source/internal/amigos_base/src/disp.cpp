@@ -47,6 +47,38 @@ typedef struct stSys_BindInfo_s
 #endif
 } stSys_BindInfo_T;
 
+int Disp::StrToLInkType(std::string &strLinkType)
+{
+#ifdef INTERFACE_PANEL
+    if (strLinkType == "ttl")
+        return E_MI_PNL_LINK_TTL;
+    if (strLinkType == "mipi")
+        return E_MI_PNL_LINK_MIPI_DSI;
+    return E_MI_PNL_LINK_TTL;
+#else
+    return 0;
+#endif
+}
+int Disp::StrToTiming(std::string &strOutTiming)
+{
+    if (strOutTiming == "ntsc")
+        return E_MI_DISP_OUTPUT_NTSC;
+    if (strOutTiming == "pal")
+        return E_MI_DISP_OUTPUT_PAL;
+    if (strOutTiming == "576p50")
+        return E_MI_DISP_OUTPUT_576P50;
+    if (strOutTiming == "720p50")
+        return E_MI_DISP_OUTPUT_720P50;
+    if (strOutTiming == "720p60")
+        return E_MI_DISP_OUTPUT_720P50;
+    if (strOutTiming == "1080p60")
+        return E_MI_DISP_OUTPUT_1080P60;
+    if (strOutTiming == "3840x2160p30")
+        return E_MI_DISP_OUTPUT_3840x2160_30;
+    if (strOutTiming == "3840x2160p60")
+        return E_MI_DISP_OUTPUT_3840x2160_60;
+    return E_MI_DISP_OUTPUT_1080P60;
+}
 Disp::Disp()
 {
 }
@@ -63,14 +95,14 @@ void Disp::LoadDb()
     char strLayerName[30];
     std::string strLayerKey;
 
-    stDispInfo.intDeviceType = GetIniInt(stModDesc.modKeyString, "DEV_TYPE");
+    stDispInfo.strDevType = GetIniString(stModDesc.modKeyString, "DEV_TYPE");
     stDispInfo.intBackGroundColor = GetIniInt(stModDesc.modKeyString, "BK_COLOR");
-    stDispInfo.intPanelLinkType = GetIniInt(stModDesc.modKeyString, "PNL_LINK_TYPE");
-    stDispInfo.intOutTiming = GetIniInt(stModDesc.modKeyString, "DISP_OUT_TIMING", E_MI_DISP_OUTPUT_1080P60);
+    stDispInfo.strPnlLinkType = GetIniString(stModDesc.modKeyString, "PNL_LINK_TYPE");
+    stDispInfo.strOutTiming = GetIniString(stModDesc.modKeyString, "DISP_OUT_TIMING", (char *)"1080p60");
     intLayerCnt = GetIniInt(stModDesc.modKeyString, "IN_LAYER_CNT");
-    AMIGOS_INFO("DEV_TYPE : %d\n", stDispInfo.intDeviceType);
+    AMIGOS_INFO("DEV_TYPE : %s\n", stDispInfo.strDevType.c_str());
     AMIGOS_INFO("BK_COLOR : %d\n", stDispInfo.intBackGroundColor);
-    AMIGOS_INFO("PNL_LINK_TYPE : %d\n", stDispInfo.intPanelLinkType);
+    AMIGOS_INFO("PNL_LINK_TYPE : %s\n", stDispInfo.strPnlLinkType.c_str());
     AMIGOS_INFO("LAYER_CNT : %d\n", intLayerCnt);
     if (intLayerCnt != -1)
     {
@@ -185,12 +217,12 @@ void Disp::Init()
             break;
     }
 
-    if (stDispInfo.intDeviceType == 0)
+    if (stDispInfo.strDevType == "panel")
     {
 #ifdef INTERFACE_PANEL
 #ifdef SSTAR_CHIP_I6E
-        MI_PANEL_Init((MI_PANEL_IntfType_e)stDispInfo.intPanelLinkType);
-        MI_PANEL_GetPanelParam((MI_PANEL_IntfType_e)stDispInfo.intPanelLinkType, &stPanelParamCfg);
+        MI_PANEL_Init((MI_PANEL_IntfType_e)StrToLInkType(stDispInfo.intPanelLinkType));
+        MI_PANEL_GetPanelParam((MI_PANEL_IntfType_e)StrToLInkType(stDispInfo.intPanelLinkType), &stPanelParamCfg);
         stPubAttr.eIntfSync = E_MI_DISP_OUTPUT_USER;
         stPubAttr.eIntfType = E_MI_DISP_INTF_LCD;
         stPubAttr.stSyncInfo.u16Vact = stPanelParamCfg.u16Height;
@@ -229,7 +261,7 @@ void Disp::Init()
 #endif
 #endif
     }
-    else if (stDispInfo.intDeviceType == 1)
+    else if (stDispInfo.strDevType == "hdmi")
     {
 #ifdef INTERFACE_HDMI
         MI_HDMI_InitParam_t stInitParam;
@@ -252,7 +284,7 @@ void Disp::Init()
         stAttr.stVideoAttr.bEnableVideo = TRUE;
         stAttr.stVideoAttr.eColorType = E_MI_HDMI_COLOR_TYPE_RGB444;//default color type
         stAttr.stVideoAttr.eDeepColorMode = E_MI_HDMI_DEEP_COLOR_MAX;
-        switch ((MI_DISP_OutputTiming_e)stDispInfo.intOutTiming)
+        switch ((MI_DISP_OutputTiming_e)StrToTiming(stDispInfo.strOutTiming))
         {
             case E_MI_DISP_OUTPUT_NTSC:
             case E_MI_DISP_OUTPUT_480P60:
@@ -285,18 +317,18 @@ void Disp::Init()
         MI_HDMI_SetAttr(E_MI_HDMI_ID_0, &stAttr);
         MI_HDMI_Start(E_MI_HDMI_ID_0);
         stPubAttr.eIntfType = E_MI_DISP_INTF_HDMI;
-        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)StrToTiming(stDispInfo.strOutTiming);
 #endif
     }
-    else if (stDispInfo.intDeviceType == 2)
+    else if (stDispInfo.strDevType == "vga")
     {
         stPubAttr.eIntfType = E_MI_DISP_INTF_VGA;
-        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)StrToTiming(stDispInfo.strOutTiming);
     }
-    else if (stDispInfo.intDeviceType == 3)
+    else if (stDispInfo.strDevType == "cvbs_out")
     {
         stPubAttr.eIntfType = E_MI_DISP_INTF_CVBS;
-        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)stDispInfo.intOutTiming;
+        stPubAttr.eIntfSync = (MI_DISP_OutputTiming_e)StrToTiming(stDispInfo.strOutTiming);
     }
     else
     {
@@ -429,13 +461,13 @@ void Disp::Deinit()
         MI_DISP_UnBindVideoLayer(u8LayerId, (MI_DISP_DEV)stModDesc.devId);
     }
     MI_DISP_Disable((MI_DISP_DEV)stModDesc.devId);
-    if (stDispInfo.intDeviceType == 0)
+    if (stDispInfo.strDevType == "panel")
     {
 #ifdef INTERFACE_PANEL
         MI_PANEL_DeInit();
 #endif
     }
-    else if (stDispInfo.intDeviceType == 1)
+    else if (stDispInfo.strDevType == "hdmi")
     {
 #ifdef INTERFACE_HDMI
         MI_HDMI_Stop(E_MI_HDMI_ID_0);
@@ -443,10 +475,10 @@ void Disp::Deinit()
         MI_HDMI_DeInit();
 #endif
     }
-    else if (stDispInfo.intDeviceType == 2)
+    else if (stDispInfo.strDevType == "vga")
     {
     }
-    else if (stDispInfo.intDeviceType == 3)
+    else if (stDispInfo.strDevType == "cvbs_out")
     {
     }
     else

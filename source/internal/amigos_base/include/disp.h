@@ -6,10 +6,10 @@
 
 typedef struct stDispInfo_s
 {
-    int intDeviceType; //0: panel 1: hdmi: 2: vga 3: cvbs out
-    int intPanelLinkType; //0: mipi 11: ttl
+    std::string strDevType; //0: panel 1: hdmi: 2: vga 3: cvbs out
+    std::string strPnlLinkType; //0: mipi 11: ttl
     int intBackGroundColor;
-    int intOutTiming;
+    std::string strOutTiming;
 }stDispInfo_t;
 
 typedef struct stDispInputLayerPortInfo_s
@@ -57,7 +57,8 @@ class Disp: public Sys
         virtual void PrevIntBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
         virtual void PrevIntUnBind(stModInputInfo_t & stIn, stModDesc_t &stPreDesc);
         virtual void LoadDb();
-
+        int StrToLInkType(std::string &strLinkType);
+        int StrToTiming(std::string &strOutTiming);
         stDispInfo_t stDispInfo;
         std::map<unsigned int, stDispLayerInfo_t> mapLayerInfo;
 };
